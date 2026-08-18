@@ -44,8 +44,12 @@ const primaryBtn = {
   cursor: "pointer",
 };
 
-function Panel({ children, style }) {
-  return <div style={{ background: "var(--bg2)", border: "1px solid var(--line)", borderRadius: 4, ...style }}>{children}</div>;
+function Panel({ children, style, onClick }) {
+  return (
+    <div onClick={onClick} style={{ background: "var(--bg2)", border: "1px solid var(--line)", borderRadius: 4, ...style }}>
+      {children}
+    </div>
+  );
 }
 
 function Field({ label, children }) {
@@ -108,6 +112,7 @@ export default function Home() {
   const [reportRange, setReportRange] = useState(2);
   const [report, setReport] = useState(null);
   const [reportLoading, setReportLoading] = useState(false);
+  const [selectedWorkout, setSelectedWorkout] = useState(null);
 
   const loadAll = useCallback(async () => {
     const [wRes, pRes] = await Promise.all([fetch("/api/workouts"), fetch("/api/prs")]);
@@ -355,16 +360,35 @@ export default function Home() {
             </Panel>
 
             {workouts.map((w) => (
-              <Panel key={w.id} style={{ padding: 16, marginBottom: 10 }}>
+              <Panel
+                key={w.id}
+                style={{ padding: 16, marginBottom: 10, cursor: "pointer" }}
+                onClick={() => setSelectedWorkout(w)}
+              >
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <div>
+                  <div style={{ minWidth: 0 }}>
                     <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: "var(--chalk-dim)" }}>
                       {new Date(w.date).toISOString().slice(0, 10)}
                     </div>
-                    <div style={{ fontSize: 14 }}>{w.desc}</div>
+                    <div
+                      style={{
+                        fontSize: 14,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {w.desc}
+                    </div>
                     {w.result && <div style={{ color: "var(--rust)" }}>Tulos: {w.result}</div>}
                   </div>
-                  <button onClick={() => deleteEntry(w.id)} style={{ background: "transparent", border: "none", color: "var(--chalk-dim)", cursor: "pointer" }}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteEntry(w.id);
+                    }}
+                    style={{ background: "transparent", border: "none", color: "var(--chalk-dim)", cursor: "pointer", flexShrink: 0 }}
+                  >
                     Poista
                   </button>
                 </div>
@@ -431,6 +455,86 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      {selectedWorkout && (
+        <div
+          onClick={() => setSelectedWorkout(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.6)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+            zIndex: 50,
+          }}
+        >
+          <div onClick={(e) => e.stopPropagation()} style={{ maxWidth: 560, width: "100%" }}>
+            <Panel style={{ padding: 24, background: "var(--bg3)", maxHeight: "80vh", overflowY: "auto" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: "var(--chalk-dim)" }}>
+                  {new Date(selectedWorkout.date).toISOString().slice(0, 10)}
+                </div>
+                <button
+                  onClick={() => setSelectedWorkout(null)}
+                  style={{ background: "transparent", border: "none", color: "var(--chalk-dim)", fontSize: 18, cursor: "pointer", lineHeight: 1 }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div style={{ fontSize: 16, marginBottom: 14, whiteSpace: "pre-wrap" }}>{selectedWorkout.desc}</div>
+
+              {selectedWorkout.result && (
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: 11, color: "var(--chalk-dim)", textTransform: "uppercase" }}>Tulos</div>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 15, color: "var(--rust)" }}>{selectedWorkout.result}</div>
+                </div>
+              )}
+
+              {selectedWorkout.notes && (
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: 11, color: "var(--chalk-dim)", textTransform: "uppercase" }}>Muistiinpanot</div>
+                  <div style={{ fontSize: 14, fontStyle: "italic", whiteSpace: "pre-wrap" }}>{selectedWorkout.notes}</div>
+                </div>
+              )}
+
+              {(selectedWorkout.restHr || selectedWorkout.avgHr || selectedWorkout.recovery || selectedWorkout.sleepHrs || selectedWorkout.rpe) && (
+                <div>
+                  <div style={{ fontSize: 11, color: "var(--chalk-dim)", textTransform: "uppercase", marginBottom: 6 }}>Mittarit</div>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: "var(--steel)", display: "flex", gap: 14, flexWrap: "wrap" }}>
+                    {selectedWorkout.restHr && <span>Aamusyke {selectedWorkout.restHr}</span>}
+                    {selectedWorkout.avgHr && <span>Keskisyke {selectedWorkout.avgHr}</span>}
+                    {selectedWorkout.recovery && <span>Palautuminen {selectedWorkout.recovery}</span>}
+                    {selectedWorkout.sleepHrs && <span>Uni {selectedWorkout.sleepHrs}h</span>}
+                    {selectedWorkout.rpe && <span>RPE {selectedWorkout.rpe}</span>}
+                  </div>
+                </div>
+              )}
+
+              <button
+                onClick={() => {
+                  deleteEntry(selectedWorkout.id);
+                  setSelectedWorkout(null);
+                }}
+                style={{
+                  marginTop: 20,
+                  background: "transparent",
+                  border: "1px solid var(--line)",
+                  color: "var(--red)",
+                  fontSize: 12,
+                  padding: "8px 14px",
+                  borderRadius: 3,
+                  cursor: "pointer",
+                }}
+              >
+                Poista merkintä
+              </button>
+            </Panel>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
