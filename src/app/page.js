@@ -3,6 +3,20 @@
 import { useEffect, useState, useCallback } from "react";
 import { LineChart, Line, ResponsiveContainer } from "recharts";
 
+const wodFormats = [
+  { term: "For Time", desc: "Suorita liikkeet/kierrokset mahdollisimman nopeasti, mitataan aika. Klassinen \"kuka on nopein\" -formaatti (esim. Fran)." },
+  { term: "AMRAP (As Many Rounds/Reps As Possible)", desc: "Tee mahdollisimman monta kierrosta (tai toistoa) annetussa ajassa, esim. \"AMRAP 12 min\". Mittarina on kierrosmäärä, ei aika." },
+  { term: "EMOM (Every Minute On the Minute)", desc: "Uusi liikesarja alkaa joka minuutin alussa. Jos ehdit ennen minuutin loppua, lepäät jäljelle jäävän ajan. Testaa sekä suoritustehoa että palautumista." },
+  { term: "RFT (Rounds For Time)", desc: "Sama kuin For Time, mutta korostaa nimenomaan kierrosten määrää, esim. \"5 RFT: 10 pull-up, 15 push-up\"." },
+  { term: "Tabata", desc: "20 sekuntia täysillä, 10 sekuntia lepoa, toistetaan 8 kierrosta (yhteensä 4 min) per liike. Alunperin tutkimusprotokolla, otettu CrossFitin käyttöön." },
+  { term: "Chipper", desc: "Pitkä lista erilaisia liikkeitä, jotka suoritetaan kerran läpi järjestyksessä (ei kierroksia), usein isoilla toistomäärillä. \"Chippaat\" listaa läpi." },
+  { term: "Ladder (tikapuut)", desc: "Toistomäärä nousee tai laskee joka kierroksella, esim. 1-2-3-4-5... tai päinvastoin. Nouseva/laskeva ladder." },
+  { term: "Death By", desc: "Aloitat yhdellä toistolla minuutissa, joka minuutti lisäät yhden toiston (2, 3, 4...), kunnes et enää ehdi annetussa minuutissa — silloin treeni päättyy. Testaa kestävyyttä äärirajoille." },
+  { term: "Interval / Rest-based", desc: "Esim. \"3 rounds, rest 2 min between\" — kierrokset erotettu kiinteillä lepotauoilla, ei jatkuva suoritus." },
+  { term: "Strength/Skill work", desc: "Ei varsinainen \"metcon\"-formaatti, mutta osa WOD-rakennetta. Esim. \"5x5 back squat\" — sarjat x toistot kiinteällä painolla, keskittyy voimaan/tekniikkaan ennen metconia." },
+  { term: "Partner WOD", desc: "Kaksi urheilijaa jakavat työn (esim. vuorotellen, tai toinen tekee liikettä A kun toinen liikettä B)." },
+];
+
 const inputStyle = {
   width: "100%",
   boxSizing: "border-box",
@@ -85,11 +99,15 @@ export default function Home() {
   const [logDesc, setLogDesc] = useState("");
   const [logResult, setLogResult] = useState("");
   const [logNotes, setLogNotes] = useState("");
-  const [logRestHr, setLogRestHr] = useState("");
   const [logAvgHr, setLogAvgHr] = useState("");
   const [logRecovery, setLogRecovery] = useState("");
   const [logSleep, setLogSleep] = useState("");
-  const [logRpe, setLogRpe] = useState("");
+
+  const [wodAvgHr, setWodAvgHr] = useState("");
+  const [wodRecovery, setWodRecovery] = useState("");
+  const [wodSleepHrs, setWodSleepHrs] = useState("");
+
+  const [showGlossary, setShowGlossary] = useState(false);
 
   const [reportRange, setReportRange] = useState(2);
   const [report, setReport] = useState(null);
@@ -142,8 +160,18 @@ export default function Home() {
     await fetch("/api/workouts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ date: logDate, desc, notes: wod.coach_cue || "" }),
+      body: JSON.stringify({
+        date: logDate,
+        desc,
+        notes: wod.coach_cue || "",
+        avgHr: wodAvgHr,
+        recovery: wodRecovery,
+        sleepHrs: wodSleepHrs,
+      }),
     });
+    setWodAvgHr("");
+    setWodRecovery("");
+    setWodSleepHrs("");
     await loadAll();
     setTab("log");
   }
@@ -158,21 +186,17 @@ export default function Home() {
         desc: logDesc.trim(),
         result: logResult.trim(),
         notes: logNotes.trim(),
-        restHr: logRestHr,
         avgHr: logAvgHr,
         recovery: logRecovery,
         sleepHrs: logSleep,
-        rpe: logRpe,
       }),
     });
     setLogDesc("");
     setLogResult("");
     setLogNotes("");
-    setLogRestHr("");
     setLogAvgHr("");
     setLogRecovery("");
     setLogSleep("");
-    setLogRpe("");
     await loadAll();
   }
 
@@ -323,11 +347,54 @@ export default function Home() {
                   <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 15 }}>{wod.metcon?.liikkeet}</div>
                 </div>
                 {wod.coach_cue && <div style={{ fontSize: 13, color: "var(--steel)", fontStyle: "italic" }}>Vinkki: {wod.coach_cue}</div>}
-                <button onClick={saveWodToLog} style={{ ...primaryBtn, marginTop: 18, background: "transparent", border: "1px solid var(--chalk)", color: "var(--chalk)" }}>
+
+                <div style={{ fontSize: 11, color: "var(--chalk-dim)", textTransform: "uppercase", marginTop: 18, marginBottom: 8 }}>
+                  Palautumisdata (kellosta/sykevyöstä, valinnainen)
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 10 }}>
+                  <div style={{ flex: "1 1 130px" }}>
+                    <Field label="Keskisyke"><input type="text" value={wodAvgHr} onChange={(e) => setWodAvgHr(e.target.value)} style={inputStyle} /></Field>
+                  </div>
+                  <div style={{ flex: "1 1 130px" }}>
+                    <Field label="Palautuminen"><input type="text" value={wodRecovery} onChange={(e) => setWodRecovery(e.target.value)} style={inputStyle} /></Field>
+                  </div>
+                  <div style={{ flex: "1 1 100px" }}>
+                    <Field label="Uni (h)"><input type="text" value={wodSleepHrs} onChange={(e) => setWodSleepHrs(e.target.value)} style={inputStyle} /></Field>
+                  </div>
+                </div>
+
+                <button onClick={saveWodToLog} style={{ ...primaryBtn, background: "transparent", border: "1px solid var(--chalk)", color: "var(--chalk)" }}>
                   Tallenna lokiin
                 </button>
               </Panel>
             )}
+
+            <Panel style={{ padding: 20, marginTop: 20 }}>
+              <div
+                onClick={() => setShowGlossary((v) => !v)}
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}
+              >
+                <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 22 }}>CROSSFIT-SANASTO</div>
+                <div style={{ color: "var(--chalk-dim)", fontSize: 20, lineHeight: 1 }}>{showGlossary ? "−" : "+"}</div>
+              </div>
+              {!showGlossary && (
+                <div style={{ color: "var(--chalk-dim)", fontSize: 13, marginTop: 6 }}>
+                  Uusi CrossFitissä? Tarkista mitä For Time, AMRAP, EMOM ja muut lyhenteet tarkoittavat.
+                </div>
+              )}
+              {showGlossary && (
+                <div style={{ marginTop: 14 }}>
+                  {wodFormats.map((f) => (
+                    <div key={f.term} style={{ marginBottom: 14 }}>
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: "var(--rust)", marginBottom: 2 }}>
+                        {f.term}
+                      </div>
+                      <div style={{ fontSize: 13, color: "var(--chalk-dim)", lineHeight: 1.5 }}>{f.desc}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Panel>
           </div>
         )}
 
@@ -349,9 +416,6 @@ export default function Home() {
               </Field>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
                 <div style={{ flex: "1 1 130px" }}>
-                  <Field label="Aamusyke"><input type="text" value={logRestHr} onChange={(e) => setLogRestHr(e.target.value)} style={inputStyle} /></Field>
-                </div>
-                <div style={{ flex: "1 1 130px" }}>
                   <Field label="Keskisyke"><input type="text" value={logAvgHr} onChange={(e) => setLogAvgHr(e.target.value)} style={inputStyle} /></Field>
                 </div>
                 <div style={{ flex: "1 1 130px" }}>
@@ -359,9 +423,6 @@ export default function Home() {
                 </div>
                 <div style={{ flex: "1 1 100px" }}>
                   <Field label="Uni (h)"><input type="text" value={logSleep} onChange={(e) => setLogSleep(e.target.value)} style={inputStyle} /></Field>
-                </div>
-                <div style={{ flex: "1 1 100px" }}>
-                  <Field label="RPE"><input type="text" value={logRpe} onChange={(e) => setLogRpe(e.target.value)} style={inputStyle} /></Field>
                 </div>
               </div>
               <button onClick={addLogEntry} style={{ ...primaryBtn, marginTop: 10 }}>LISÄÄ</button>
@@ -579,15 +640,13 @@ export default function Home() {
                 </div>
               )}
 
-              {(selectedWorkout.restHr || selectedWorkout.avgHr || selectedWorkout.recovery || selectedWorkout.sleepHrs || selectedWorkout.rpe) && (
+              {(selectedWorkout.avgHr || selectedWorkout.recovery || selectedWorkout.sleepHrs) && (
                 <div>
                   <div style={{ fontSize: 11, color: "var(--chalk-dim)", textTransform: "uppercase", marginBottom: 6 }}>Mittarit</div>
                   <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: "var(--steel)", display: "flex", gap: 14, flexWrap: "wrap" }}>
-                    {selectedWorkout.restHr && <span>Aamusyke {selectedWorkout.restHr}</span>}
                     {selectedWorkout.avgHr && <span>Keskisyke {selectedWorkout.avgHr}</span>}
                     {selectedWorkout.recovery && <span>Palautuminen {selectedWorkout.recovery}</span>}
                     {selectedWorkout.sleepHrs && <span>Uni {selectedWorkout.sleepHrs}h</span>}
-                    {selectedWorkout.rpe && <span>RPE {selectedWorkout.rpe}</span>}
                   </div>
                 </div>
               )}

@@ -19,6 +19,11 @@ export async function PATCH(request, { params }) {
 
 export async function DELETE(request, { params }) {
   const { id } = await params;
-  await prisma.personalRecord.delete({ where: { id } });
-  return NextResponse.json({ ok: true });
+  try {
+    await prisma.personalRecord.delete({ where: { id } });
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error("PR-poisto epäonnistui:", err);
+    return NextResponse.json({ error: "Poisto epäonnistui", detail: String(err) }, { status: 500 });
+  }
 }
