@@ -59,6 +59,20 @@ function Field({ label, children }) {
   );
 }
 
+function WodLines({ value, fontSize = 14 }) {
+  if (!value) return null;
+  const lines = Array.isArray(value) ? value : [value];
+  return (
+    <ul style={{ margin: 0, paddingLeft: 18, fontFamily: "'JetBrains Mono', monospace", fontSize }}>
+      {lines.map((line, i) => (
+        <li key={i} style={{ marginBottom: 4 }}>
+          {line}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function Pill({ active, onClick, children }) {
   return (
     <button
@@ -156,7 +170,8 @@ export default function Home() {
 
   async function saveWodToLog() {
     if (!wod) return;
-    const desc = `${wod.nimi} — ${wod.metcon?.muoto || ""}: ${wod.metcon?.liikkeet || ""}`;
+    const liikkeet = Array.isArray(wod.metcon?.liikkeet) ? wod.metcon.liikkeet.join(", ") : wod.metcon?.liikkeet || "";
+    const desc = `${wod.nimi} — ${wod.metcon?.muoto || ""}: ${liikkeet}`;
     await fetch("/api/workouts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -281,7 +296,7 @@ export default function Home() {
                 cursor: "pointer",
               }}
             >
-              {{ plan: "OHJELMA", log: "LOKI", prs: "ENNÄTYKSET", report: "RAPORTTI" }[t]}
+              {{ plan: "LUO WOD", log: "LOKI", prs: "ENNÄTYKSET", report: "RAPORTTI" }[t]}
             </button>
           ))}
         </div>
@@ -332,19 +347,19 @@ export default function Home() {
                 </div>
                 <div style={{ marginBottom: 14 }}>
                   <div style={{ fontSize: 11, color: "var(--chalk-dim)", textTransform: "uppercase" }}>Alkulämmittely</div>
-                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 14 }}>{wod.alkulammittely}</div>
+                  <WodLines value={wod.alkulammittely} />
                 </div>
                 {wod.voimaosuus && (
                   <div style={{ marginBottom: 14 }}>
                     <div style={{ fontSize: 11, color: "var(--chalk-dim)", textTransform: "uppercase" }}>Voimaosuus</div>
-                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 14 }}>{wod.voimaosuus}</div>
+                    <WodLines value={wod.voimaosuus} />
                   </div>
                 )}
                 <div style={{ marginBottom: 14 }}>
                   <div style={{ fontSize: 11, color: "var(--rust)", textTransform: "uppercase" }}>
                     Metcon — {wod.metcon?.muoto} {wod.metcon?.aikaraja ? `(${wod.metcon.aikaraja})` : ""}
                   </div>
-                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 15 }}>{wod.metcon?.liikkeet}</div>
+                  <WodLines value={wod.metcon?.liikkeet} fontSize={15} />
                 </div>
                 {wod.coach_cue && <div style={{ fontSize: 13, color: "var(--steel)", fontStyle: "italic" }}>Vinkki: {wod.coach_cue}</div>}
 

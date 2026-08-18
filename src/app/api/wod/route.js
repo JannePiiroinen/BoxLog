@@ -27,12 +27,14 @@ LISÄÄ sen sijaan lyhyt (max 5-8 sanan) suomenkielinen selitys sulkeissa aina, 
 Kun alkulämmittelyssä tarvitaan kevyt väline tangonvalmisteluun, käytä aina termiä "puutanko" (ei "PVC", "PVC-putki" tai "puukeppi") - saleilla käytetään puutankoja, ei muoviputkia.
 Kaikki muu teksti (otsikot, kuvaukset, vinkit) kirjoitetaan suomeksi, mutta pidä ne lyhyinä - älä kirjoita fysioterapiamaisia pitkiä ohjeita.
 Kirjoita voimaosuuden lisähuomiot ja coach_cue täysinä, luontevina suomenkielisinä lauseina - älä irrallisina sanafragmentteina (esim. älä kirjoita "pakarat alle polvet", vaan "vie lantio niin syvälle, että pakarat laskeutuvat polvien alapuolelle").
+TÄRKEÄÄ rakenteesta: "alkulammittely", "voimaosuus" ja "metcon.liikkeet" ovat JSON-taulukoita (array), EI yhtä pitkää merkkijonoa. Jokainen erillinen liike, sarja tai ohje omana taulukon alkionaan (yksi rivi = yksi asia, ei "•"-merkkejä tai pilkuilla/väliviivoilla yhteen pötköön tungettuja lauseita). Esim. alkulammittely: ["2 kierrosta:", "10 lonkkakierto per suunta", "10 kahvakuula deadlift kevyellä painolla", "8 goblet squat"].
+Älä koskaan lisää pelkkää erotinriviä (esim. "---" tai "***") omaksi taulukon alkiokseen alilohkojen väliin - jos alkulämmittelyssä tai voimaosuudessa on selkeästi eri vaiheita (esim. yleinen lämmittely ja tangonvalmistelu), listaa ne silti yhtenä jatkuvana alkioiden sarjana ilman erotinta, tarvittaessa oman lyhyen otsikkorivin avulla (esim. "Tangonvalmistelu:").
 JSON-rakenne:
 {
   "nimi": "lyhyt nimi treenille",
-  "alkulammittely": "lyhyt kuvaus alkulämmittelystä",
-  "voimaosuus": "voimaharjoitteen kuvaus ja sarjat/toistot, tai null jos ei sovellu",
-  "metcon": { "muoto": "esim. 21-15-9", "liikkeet": "liikkeet ja toistomäärät", "aikaraja": "esim. 12 min tai null" },
+  "alkulammittely": ["rivi 1", "rivi 2", "..."],
+  "voimaosuus": ["rivi 1", "rivi 2", "..."] tai null jos ei sovellu,
+  "metcon": { "muoto": "esim. 21-15-9", "liikkeet": ["rivi 1", "rivi 2", "..."], "aikaraja": "esim. 12 min tai null" },
   "coach_cue": "yksi lyhyt vinkki suoritukseen"
 }`;
 
