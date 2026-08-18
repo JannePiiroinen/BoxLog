@@ -3,24 +3,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { LineChart, Line, ResponsiveContainer } from "recharts";
 
-const DEFAULT_LIFTS = [
-  { key: "etunosto", label: "Etunosto (deadlift)", unit: "kg" },
-  { key: "takakyykky", label: "Takakyykky", unit: "kg" },
-  { key: "penkki", label: "Penkkipunnerus", unit: "kg" },
-  { key: "tyonto", label: "Työntö (push press)", unit: "kg" },
-  { key: "tempaus", label: "Tempaus", unit: "kg" },
-  { key: "rinnalleveto", label: "Rinnalleveto + työntö", unit: "kg" },
-];
-
-const DEFAULT_BENCHMARKS = [
-  { key: "fran", label: "Fran", unit: "aika" },
-  { key: "grace", label: "Grace", unit: "aika" },
-  { key: "helen", label: "Helen", unit: "aika" },
-  { key: "cindy", label: "Cindy", unit: "kierrokset" },
-  { key: "murph", label: "Murph", unit: "aika" },
-  { key: "diane", label: "Diane", unit: "aika" },
-];
-
 const inputStyle = {
   width: "100%",
   boxSizing: "border-box",
@@ -114,6 +96,13 @@ export default function Home() {
   const [reportLoading, setReportLoading] = useState(false);
   const [selectedWorkout, setSelectedWorkout] = useState(null);
 
+  const [prName, setPrName] = useState("");
+  const [prDate, setPrDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [prValue, setPrValue] = useState("");
+  const [prUnit, setPrUnit] = useState("kg");
+  const [prError, setPrError] = useState(null);
+  const [editingPrId, setEditingPrId] = useState(null);
+
   const loadAll = useCallback(async () => {
     const [wRes, pRes] = await Promise.all([fetch("/api/workouts"), fetch("/api/prs")]);
     const wData = await wRes.json();
@@ -192,13 +181,34 @@ export default function Home() {
     await loadAll();
   }
 
-  async function updatePr(key, label, unit, value) {
-    if (!value) return;
+  async function addPr() {
+    setPrError(null);
+    if (!prName.trim() || !prValue) {
+      setPrError("Anna liikkeen nimi ja kilomäärä.");
+      return;
+    }
     await fetch("/api/prs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key, label, unit, value }),
+      body: JSON.stringify({ label: prName.trim(), date: prDate, value: prValue, unit: prUnit }),
     });
+    setPrName("");
+    setPrValue("");
+    await loadAll();
+  }
+
+  async function savePrEdit(id, label, date, value) {
+    await fetch(`/api/prs/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ label, date, value }),
+    });
+    setEditingPrId(null);
+    await loadAll();
+  }
+
+  async function deletePr(id) {
+    await fetch(`/api/prs/${id}`, { method: "DELETE" });
     await loadAll();
   }
 
@@ -219,8 +229,6 @@ export default function Home() {
       setReportLoading(false);
     }
   }
-
-  const allRecords = [...DEFAULT_LIFTS, ...DEFAULT_BENCHMARKS];
 
   return (
     <div style={{ minHeight: "100vh", padding: "24px 16px 60px" }}>
@@ -398,29 +406,100 @@ export default function Home() {
         )}
 
         {loaded && tab === "prs" && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 14 }}>
-            {allRecords.map((rec) => {
-              const data = prs[rec.key];
-              const latest = data?.history?.length ? data.history[data.history.length - 1] : null;
-              return (
-                <Panel key={rec.key} style={{ padding: 16 }}>
-                  <div style={{ fontSize: 13, color: "var(--chalk-dim)" }}>{rec.label}</div>
-                  <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 26, color: "var(--red)" }}>
-                    {latest ? latest.value : "—"}
-                  </div>
-                  {data?.history?.length > 1 && (
-                    <div style={{ height: 50 }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={data.history.map((h, i) => ({ ...h, i }))}>
-                          <Line type="monotone" dataKey="i" stroke="var(--steel)" dot={false} strokeWidth={2} />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-                  <PrInput onSubmit={(val) => updatePr(rec.key, rec.label, rec.unit, val)} />
-                </Panel>
-              );
-            })}
+          <div>
+            <Panel style={{ padding: 20, marginBottom: 20 }}>
+              <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 22, marginBottom: 12 }}>LISÄÄ ENNÄTYS</div>
+              <Field label="Liikkeen nimi">
+                <input
+                  type="text"
+                  list="pr-movement-list"
+                  placeholder="esim. Takakyykky, Fran, Etunosto..."
+                  value={prName}
+                  onChange={(e) => setPrName(e.target.value)}
+                  style={inputStyle}
+                />
+                <datalist id="pr-movement-list">
+                  {Object.keys(prs).map((label) => (
+                    <option key={label} value={label} />
+                  ))}
+                </datalist>
+              </Field>
+              <Field label="Yksikkö">
+                {[
+                  { key: "kg", label: "Kilot" },
+                  { key: "toistoa", label: "Toistot" },
+                  { key: "aika", label: "Aika" },
+                ].map((u) => (
+                  <Pill key={u.key} active={prUnit === u.key} onClick={() => setPrUnit(u.key)}>
+                    {u.label}
+                  </Pill>
+                ))}
+              </Field>
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                <div style={{ flex: "1 1 160px" }}>
+                  <Field label="Päivämäärä">
+                    <input type="date" value={prDate} onChange={(e) => setPrDate(e.target.value)} style={inputStyle} />
+                  </Field>
+                </div>
+                <div style={{ flex: "1 1 120px" }}>
+                  <Field label={prUnit === "kg" ? "Kilomäärä (kg)" : prUnit === "toistoa" ? "Toistot" : "Aika (esim. 3:45)"}>
+                    <input
+                      type="text"
+                      placeholder={prUnit === "kg" ? "esim. 100" : prUnit === "toistoa" ? "esim. 3" : "esim. 3:45"}
+                      value={prValue}
+                      onChange={(e) => setPrValue(e.target.value)}
+                      style={inputStyle}
+                    />
+                  </Field>
+                </div>
+              </div>
+              <button onClick={addPr} style={primaryBtn}>TALLENNA</button>
+              {prError && <div style={{ color: "var(--red)", fontSize: 13, marginTop: 10 }}>{prError}</div>}
+            </Panel>
+
+            {Object.keys(prs).length === 0 ? (
+              <div style={{ color: "var(--chalk-dim)", fontSize: 14 }}>
+                Ei vielä ennätyksiä. Lisää ensimmäinen liike yllä olevalla lomakkeella.
+              </div>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 14 }}>
+                {Object.entries(prs).map(([label, data]) => {
+                  const sorted = [...data.history].sort((a, b) => (a.date < b.date ? 1 : -1));
+                  const latest = sorted[0];
+                  return (
+                    <Panel key={label} style={{ padding: 16 }}>
+                      <div style={{ fontSize: 13, color: "var(--chalk-dim)" }}>{label}</div>
+                      <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 26, color: "var(--red)" }}>
+                        {latest ? `${latest.value} ${data.unit}` : "—"}
+                      </div>
+                      {data.history.length > 1 && (
+                        <div style={{ height: 50 }}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={data.history.map((h, i) => ({ ...h, i, v: Number(h.value) }))}>
+                              <Line type="monotone" dataKey="v" stroke="var(--steel)" dot={false} strokeWidth={2} />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      )}
+                      <div style={{ marginTop: 10 }}>
+                        {sorted.map((h) => (
+                          <PrEntryRow
+                            key={h.id}
+                            entry={h}
+                            unit={data.unit}
+                            editing={editingPrId === h.id}
+                            onEdit={() => setEditingPrId(h.id)}
+                            onCancel={() => setEditingPrId(null)}
+                            onSave={(date, value) => savePrEdit(h.id, label, date, value)}
+                            onDelete={() => deletePr(h.id)}
+                          />
+                        ))}
+                      </div>
+                    </Panel>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -539,22 +618,57 @@ export default function Home() {
   );
 }
 
-function PrInput({ onSubmit }) {
-  const [val, setVal] = useState("");
+function PrEntryRow({ entry, unit, editing, onEdit, onCancel, onSave, onDelete }) {
+  const [date, setDate] = useState(entry.date);
+  const [value, setValue] = useState(entry.value);
+
+  if (editing) {
+    return (
+      <div style={{ display: "flex", gap: 6, marginTop: 8, alignItems: "center" }}>
+        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ ...inputStyle, padding: "6px 8px", fontSize: 12, flex: "1 1 auto" }} />
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          style={{ ...inputStyle, padding: "6px 8px", fontSize: 12, width: 70, flex: "0 0 auto" }}
+        />
+        <button
+          onClick={() => onSave(date, value)}
+          style={{ background: "var(--rust)", border: "none", color: "var(--bg)", fontSize: 12, padding: "6px 10px", borderRadius: 3, cursor: "pointer" }}
+        >
+          OK
+        </button>
+        <button
+          onClick={onCancel}
+          style={{ background: "transparent", border: "1px solid var(--line)", color: "var(--chalk-dim)", fontSize: 12, padding: "6px 10px", borderRadius: 3, cursor: "pointer" }}
+        >
+          Peru
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
-      <input type="text" value={val} onChange={(e) => setVal(e.target.value)} style={{ ...inputStyle, padding: "6px 8px", fontSize: 12 }} />
-      <button
-        onClick={() => {
-          if (val.trim()) {
-            onSubmit(val.trim());
-            setVal("");
-          }
-        }}
-        style={{ background: "var(--rust)", border: "none", color: "var(--bg)", fontSize: 12, padding: "6px 10px", borderRadius: 3, cursor: "pointer" }}
-      >
-        OK
-      </button>
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        fontSize: 12,
+        fontFamily: "'JetBrains Mono', monospace",
+        color: "var(--chalk-dim)",
+        marginTop: 6,
+      }}
+    >
+      <span>{entry.date} — {entry.value} {unit}</span>
+      <span style={{ display: "flex", gap: 8 }}>
+        <button onClick={onEdit} style={{ background: "transparent", border: "none", color: "var(--steel)", cursor: "pointer", fontSize: 12 }}>
+          Muokkaa
+        </button>
+        <button onClick={onDelete} style={{ background: "transparent", border: "none", color: "var(--red)", cursor: "pointer", fontSize: 12 }}>
+          Poista
+        </button>
+      </span>
     </div>
   );
 }

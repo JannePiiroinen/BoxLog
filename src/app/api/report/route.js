@@ -91,7 +91,15 @@ Vastaa VAIN JSON-muodossa, ei muuta tekstiä, ei markdown-koodilohkoja:
       .replace(/```json|```/g, "")
       .trim();
 
-    const report = JSON.parse(text);
+    let report;
+    try {
+      report = JSON.parse(text);
+    } catch (parseErr) {
+      return NextResponse.json(
+        { error: "AI palautti virheellistä JSONia", detail: text },
+        { status: 502 }
+      );
+    }
     return NextResponse.json({ report: { ...report, currentCount: current.length, previousCount: previous.length } });
   } catch (err) {
     return NextResponse.json({ error: "Raportin luonti epäonnistui", detail: String(err) }, { status: 500 });

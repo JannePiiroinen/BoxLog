@@ -23,8 +23,10 @@ export async function POST(request) {
 
 TÄRKEÄÄ liikkeiden nimistä:
 Jos liike on yleisesti tunnettu perusliike (esim. squat, lunge, burpee, mountain climber, push-up, plank, box jump, pull-up), älä selitä sitä sulkeissa - kirjoita vain liikkeen nimi ja toistomäärä/paino, kuten oikealla CrossFit-boksin liitutaululla.
-LISÄÄ sen sijaan lyhyt (max 5-8 sanan) suomenkielinen selitys sulkeissa aina, kun liike on: (a) tangonvalmistelu- tai olympiannostoliike (esim. PVC pass-through, muscle snatch, overhead squat PVC:llä, positional clean), (b) harvinaisempi gymnastiikka- tai lisäliike, tai (c) muunneltu/skaalattu versio perusliikkeestä. 
+LISÄÄ sen sijaan lyhyt (max 5-8 sanan) suomenkielinen selitys sulkeissa aina, kun liike on: (a) tangonvalmistelu- tai olympiannostoliike (esim. puutanko pass-through, muscle snatch, overhead squat puutangolla, positional clean), (b) harvinaisempi gymnastiikka- tai lisäliike, tai (c) muunneltu/skaalattu versio perusliikkeestä.
+Kun alkulämmittelyssä tarvitaan kevyt väline tangonvalmisteluun, käytä aina termiä "puutanko" (ei "PVC", "PVC-putki" tai "puukeppi") - saleilla käytetään puutankoja, ei muoviputkia.
 Kaikki muu teksti (otsikot, kuvaukset, vinkit) kirjoitetaan suomeksi, mutta pidä ne lyhyinä - älä kirjoita fysioterapiamaisia pitkiä ohjeita.
+Kirjoita voimaosuuden lisähuomiot ja coach_cue täysinä, luontevina suomenkielisinä lauseina - älä irrallisina sanafragmentteina (esim. älä kirjoita "pakarat alle polvet", vaan "vie lantio niin syvälle, että pakarat laskeutuvat polvien alapuolelle").
 JSON-rakenne:
 {
   "nimi": "lyhyt nimi treenille",
@@ -60,7 +62,15 @@ JSON-rakenne:
       .replace(/```json|```/g, "")
       .trim();
 
-    const wod = JSON.parse(text);
+    let wod;
+    try {
+      wod = JSON.parse(text);
+    } catch (parseErr) {
+      return NextResponse.json(
+        { error: "AI palautti virheellistä JSONia", detail: text },
+        { status: 502 }
+      );
+    }
     return NextResponse.json({ wod });
   } catch (err) {
     return NextResponse.json({ error: "WOD:n luonti epäonnistui", detail: String(err) }, { status: 500 });
