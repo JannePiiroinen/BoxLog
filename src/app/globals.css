@@ -1,0 +1,30 @@
+@import url("https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600&display=swap");
+
+:root {
+  --bg: #1f2421;
+  --bg2: #262b27;
+  --bg3: #2e3430;
+  --chalk: #ece8dc;
+  --chalk-dim: #b7b2a3;
+  --rust: #c1652e;
+  --rust-dim: #8f4a21;
+  --red: #d6493b;
+  --steel: #5c8a99;
+  --line: rgba(236, 232, 220, 0.14);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--chalk);
+  font-family: "Inter", sans-serif;
+}
+
+input,
+button {
+  font-family: inherit;
+}

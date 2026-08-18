@@ -1,0 +1,58 @@
+// BoxLog - tietokantaskeema
+// Vaihe 1: yksinkertainen malli, yksi User per tili, ei vielä salikohtaista jäsenyyttä.
+// Vaihe 2 (kun useita saleja/urheilijoita): lisätään Gym-malli ja Membership-liitostaulu.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+
+  workouts Workout[]
+  records  PersonalRecord[]
+}
+
+model Workout {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  date      DateTime
+  desc      String
+  result    String?
+  notes     String?
+
+  // Kellosta/sykevyöstä käsin syötetyt mittarit (vaihe 1: manuaalinen syöttö)
+  restHr    Int?
+  avgHr     Int?
+  recovery  String?
+  sleepHrs  Float?
+  rpe       Int?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, date])
+}
+
+model PersonalRecord {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  key       String   // esim. "takakyykky", "fran"
+  label     String
+  unit      String   // "kg" | "aika" | "kierrokset"
+  value     String
+  date      DateTime @default(now())
+
+  @@index([userId, key])
+}
