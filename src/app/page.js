@@ -63,13 +63,24 @@ function WodLines({ value, fontSize = 14 }) {
   if (!value) return null;
   const lines = Array.isArray(value) ? value : [value];
   return (
-    <ul style={{ margin: 0, paddingLeft: 18, fontFamily: "'JetBrains Mono', monospace", fontSize }}>
-      {lines.map((line, i) => (
-        <li key={i} style={{ marginBottom: 4 }}>
-          {line}
-        </li>
-      ))}
-    </ul>
+    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize }}>
+      {lines.map((line, i) => {
+        const isHeading = typeof line === "string" && line.trim().endsWith(":");
+        if (isHeading) {
+          return (
+            <div key={i} style={{ marginTop: i === 0 ? 0 : 8, marginBottom: 2 }}>
+              {line}
+            </div>
+          );
+        }
+        return (
+          <div key={i} style={{ display: "flex", gap: 8, marginBottom: 4, paddingLeft: 4 }}>
+            <span style={{ color: "var(--chalk-dim)" }}>•</span>
+            <span>{line}</span>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
