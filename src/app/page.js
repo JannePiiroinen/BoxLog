@@ -17,6 +17,33 @@ const wodFormats = [
   { term: "Partner WOD", desc: "Kaksi urheilijaa jakavat työn (esim. vuorotellen, tai toinen tekee liikettä A kun toinen liikettä B)." },
 ];
 
+function resizeImageFile(file, maxDim = 1600, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > maxDim || height > maxDim) {
+        const scale = maxDim / Math.max(width, height);
+        width = Math.round(width * scale);
+        height = Math.round(height * scale);
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+      URL.revokeObjectURL(url);
+      const dataUrl = canvas.toDataURL("image/jpeg", quality);
+      resolve({ dataUrl, base64: dataUrl.split(",")[1], mediaType: "image/jpeg" });
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Kuvan lataus epäonnistui"));
+    };
+    img.src = url;
+  });
+}
+
 const inputStyle = {
   width: "100%",
   boxSizing: "border-box",
@@ -84,6 +111,46 @@ function WodLines({ value, fontSize = 14 }) {
   );
 }
 
+function WodCard({ wod, warning, onSave, saveLabel = "Tallenna lokiin", children }) {
+  return (
+    <Panel style={{ padding: 24, background: "var(--bg3)" }}>
+      <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 30, borderBottom: "2px solid var(--rust)", display: "inline-block", marginBottom: 16 }}>
+        {wod.nimi || "Treeni"}
+      </div>
+      {wod.alkulammittely && (
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 11, color: "var(--chalk-dim)", textTransform: "uppercase" }}>Alkulämmittely</div>
+          <WodLines value={wod.alkulammittely} />
+        </div>
+      )}
+      {wod.voimaosuus && (
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 11, color: "var(--chalk-dim)", textTransform: "uppercase" }}>Voimaosuus</div>
+          <WodLines value={wod.voimaosuus} />
+        </div>
+      )}
+      {wod.metcon?.liikkeet && (
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 11, color: "var(--rust)", textTransform: "uppercase" }}>
+            Metcon {wod.metcon?.muoto ? `— ${wod.metcon.muoto}` : ""} {wod.metcon?.aikaraja ? `(${wod.metcon.aikaraja})` : ""}
+          </div>
+          <WodLines value={wod.metcon.liikkeet} fontSize={15} />
+        </div>
+      )}
+      {wod.coach_cue && <div style={{ fontSize: 13, color: "var(--steel)", fontStyle: "italic" }}>Vinkki: {wod.coach_cue}</div>}
+      {warning && (
+        <div style={{ color: "var(--red)", fontSize: 13, marginTop: 14, padding: "10px 12px", border: "1px solid var(--red)", borderRadius: 3 }}>
+          {warning}
+        </div>
+      )}
+      {children}
+      <button onClick={onSave} style={{ ...primaryBtn, marginTop: 18, background: "transparent", border: "1px solid var(--chalk)", color: "var(--chalk)" }}>
+        {saveLabel}
+      </button>
+    </Panel>
+  );
+}
+
 function Pill({ active, onClick, children }) {
   return (
     <button
@@ -112,6 +179,8 @@ export default function Home() {
   const [prs, setPrs] = useState({});
   const [loaded, setLoaded] = useState(false);
 
+  const [planMode, setPlanMode] = useState("ai");
+
   const [focus, setFocus] = useState("Sekoitus");
   const [duration, setDuration] = useState(45);
   const [level, setLevel] = useState("RX");
@@ -119,6 +188,18 @@ export default function Home() {
   const [wod, setWod] = useState(null);
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState(null);
+
+  const [manualDesc, setManualDesc] = useState("");
+  const [manualResult, setManualResult] = useState("");
+  const [manualSaving, setManualSaving] = useState(false);
+
+  const [photoImage, setPhotoImage] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [photoWod, setPhotoWod] = useState(null);
+  const [photoInterpreting, setPhotoInterpreting] = useState(false);
+  const [photoError, setPhotoError] = useState(null);
+  const [photoExtraSection, setPhotoExtraSection] = useState("metcon");
+  const [photoExtraLine, setPhotoExtraLine] = useState("");
 
   const [logDate, setLogDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [logDesc, setLogDesc] = useState("");
@@ -179,17 +260,24 @@ export default function Home() {
     }
   }
 
+  function describeWod(w) {
+    const liikkeet = Array.isArray(w.metcon?.liikkeet) ? w.metcon.liikkeet.join(", ") : w.metcon?.liikkeet || "";
+    const nimi = w.nimi || "Treeni";
+    const muoto = w.metcon?.muoto ? ` — ${w.metcon.muoto}` : "";
+    const osa = liikkeet ? `: ${liikkeet}` : "";
+    return `${nimi}${muoto}${osa}`;
+  }
+
   async function saveWodToLog() {
     if (!wod) return;
-    const liikkeet = Array.isArray(wod.metcon?.liikkeet) ? wod.metcon.liikkeet.join(", ") : wod.metcon?.liikkeet || "";
-    const desc = `${wod.nimi} — ${wod.metcon?.muoto || ""}: ${liikkeet}`;
     await fetch("/api/workouts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         date: logDate,
-        desc,
+        desc: describeWod(wod),
         notes: wod.coach_cue || "",
+        focus,
         avgHr: wodAvgHr,
         recovery: wodRecovery,
         sleepHrs: wodSleepHrs,
@@ -198,6 +286,92 @@ export default function Home() {
     setWodAvgHr("");
     setWodRecovery("");
     setWodSleepHrs("");
+    await loadAll();
+    setTab("log");
+  }
+
+  async function saveManualWorkout() {
+    if (!manualDesc.trim()) return;
+    setManualSaving(true);
+    await fetch("/api/workouts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        date: logDate,
+        desc: manualDesc.trim(),
+        result: manualResult.trim(),
+      }),
+    });
+    setManualDesc("");
+    setManualResult("");
+    setManualSaving(false);
+    await loadAll();
+    setTab("log");
+  }
+
+  async function handlePhotoSelect(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoWod(null);
+    setPhotoError(null);
+    try {
+      const { dataUrl, base64, mediaType } = await resizeImageFile(file);
+      setPhotoPreview(dataUrl);
+      setPhotoImage({ base64, mediaType });
+    } catch (err) {
+      setPhotoError("Kuvan lukeminen epäonnistui.");
+    }
+  }
+
+  async function interpretPhoto() {
+    if (!photoImage) return;
+    setPhotoInterpreting(true);
+    setPhotoError(null);
+    setPhotoWod(null);
+    try {
+      const res = await fetch("/api/wod-photo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageBase64: photoImage.base64, mediaType: photoImage.mediaType }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setPhotoWod(data.wod);
+    } catch (e) {
+      setPhotoError("Taulun tulkinta epäonnistui. Tarkista valaistus/terävyys ja yritä uudelleen.");
+    } finally {
+      setPhotoInterpreting(false);
+    }
+  }
+
+  function addPhotoWodLine() {
+    const line = photoExtraLine.trim();
+    if (!line || !photoWod) return;
+    setPhotoWod((prev) => {
+      if (photoExtraSection === "metcon") {
+        const liikkeet = Array.isArray(prev.metcon?.liikkeet) ? prev.metcon.liikkeet : [];
+        return { ...prev, metcon: { ...(prev.metcon || {}), liikkeet: [...liikkeet, line] } };
+      }
+      const current = Array.isArray(prev[photoExtraSection]) ? prev[photoExtraSection] : [];
+      return { ...prev, [photoExtraSection]: [...current, line] };
+    });
+    setPhotoExtraLine("");
+  }
+
+  async function savePhotoWodToLog() {
+    if (!photoWod) return;
+    await fetch("/api/workouts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        date: logDate,
+        desc: describeWod(photoWod),
+        notes: "Tulkittu salin taululta",
+      }),
+    });
+    setPhotoWod(null);
+    setPhotoPreview(null);
+    setPhotoImage(null);
     await loadAll();
     setTab("log");
   }
@@ -316,64 +490,57 @@ export default function Home() {
 
         {loaded && tab === "plan" && (
           <div>
-            <Panel style={{ padding: 20, marginBottom: 20 }}>
-              <Field label="Painopiste">
-                {["Voima", "Kestävyys / Metcon", "Taito", "Sekoitus"].map((f) => (
-                  <Pill key={f} active={focus === f} onClick={() => setFocus(f)}>
-                    {f}
-                  </Pill>
-                ))}
-              </Field>
-              <Field label="Kesto">
-                {[20, 30, 45, 60].map((d) => (
-                  <Pill key={d} active={duration === d} onClick={() => setDuration(d)}>
-                    {d} min
-                  </Pill>
-                ))}
-              </Field>
-              <Field label="Taso">
-                {["Scaled", "RX"].map((l) => (
-                  <Pill key={l} active={level === l} onClick={() => setLevel(l)}>
-                    {l}
-                  </Pill>
-                ))}
-              </Field>
-              <Field label="Välineet">
-                {["Ei välineitä", "Kahvakuula/dumbbell", "Täysi varustus"].map((e) => (
-                  <Pill key={e} active={equipment === e} onClick={() => setEquipment(e)}>
-                    {e}
-                  </Pill>
-                ))}
-              </Field>
-              <button onClick={generateWod} disabled={generating} style={primaryBtn}>
-                {generating ? "LUODAAN…" : "LUO TÄMÄN PÄIVÄN WOD"}
-              </button>
-              {genError && <div style={{ color: "var(--red)", fontSize: 13, marginTop: 10 }}>{genError}</div>}
-            </Panel>
+            <Field label="Tila">
+              {[
+                { key: "ai", label: "AI luo WOD" },
+                { key: "manual", label: "Luo oma" },
+                { key: "photo", label: "Ohjattu WOD" },
+              ].map((m) => (
+                <Pill key={m.key} active={planMode === m.key} onClick={() => setPlanMode(m.key)}>
+                  {m.label}
+                </Pill>
+              ))}
+            </Field>
 
-            {wod && (
-              <Panel style={{ padding: 24, background: "var(--bg3)" }}>
-                <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 30, borderBottom: "2px solid var(--rust)", display: "inline-block", marginBottom: 16 }}>
-                  {wod.nimi}
-                </div>
-                <div style={{ marginBottom: 14 }}>
-                  <div style={{ fontSize: 11, color: "var(--chalk-dim)", textTransform: "uppercase" }}>Alkulämmittely</div>
-                  <WodLines value={wod.alkulammittely} />
-                </div>
-                {wod.voimaosuus && (
-                  <div style={{ marginBottom: 14 }}>
-                    <div style={{ fontSize: 11, color: "var(--chalk-dim)", textTransform: "uppercase" }}>Voimaosuus</div>
-                    <WodLines value={wod.voimaosuus} />
-                  </div>
-                )}
-                <div style={{ marginBottom: 14 }}>
-                  <div style={{ fontSize: 11, color: "var(--rust)", textTransform: "uppercase" }}>
-                    Metcon — {wod.metcon?.muoto} {wod.metcon?.aikaraja ? `(${wod.metcon.aikaraja})` : ""}
-                  </div>
-                  <WodLines value={wod.metcon?.liikkeet} fontSize={15} />
-                </div>
-                {wod.coach_cue && <div style={{ fontSize: 13, color: "var(--steel)", fontStyle: "italic" }}>Vinkki: {wod.coach_cue}</div>}
+            {planMode === "ai" && (
+              <Panel style={{ padding: 20, marginBottom: 20 }}>
+                <Field label="Painopiste">
+                  {["Voima", "Kestävyys / Metcon", "Taito", "Sekoitus"].map((f) => (
+                    <Pill key={f} active={focus === f} onClick={() => setFocus(f)}>
+                      {f}
+                    </Pill>
+                  ))}
+                </Field>
+                <Field label="Kesto">
+                  {[20, 30, 45, 60].map((d) => (
+                    <Pill key={d} active={duration === d} onClick={() => setDuration(d)}>
+                      {d} min
+                    </Pill>
+                  ))}
+                </Field>
+                <Field label="Taso">
+                  {["Scaled", "RX"].map((l) => (
+                    <Pill key={l} active={level === l} onClick={() => setLevel(l)}>
+                      {l}
+                    </Pill>
+                  ))}
+                </Field>
+                <Field label="Välineet">
+                  {["Ei välineitä", "Kahvakuula/dumbbell", "Täysi varustus"].map((e) => (
+                    <Pill key={e} active={equipment === e} onClick={() => setEquipment(e)}>
+                      {e}
+                    </Pill>
+                  ))}
+                </Field>
+                <button onClick={generateWod} disabled={generating} style={primaryBtn}>
+                  {generating ? "LUODAAN…" : "LUO TÄMÄN PÄIVÄN WOD"}
+                </button>
+                {genError && <div style={{ color: "var(--red)", fontSize: 13, marginTop: 10 }}>{genError}</div>}
+              </Panel>
+            )}
 
+            {planMode === "ai" && wod && (
+              <WodCard wod={wod} onSave={saveWodToLog}>
                 <div style={{ fontSize: 11, color: "var(--chalk-dim)", textTransform: "uppercase", marginTop: 18, marginBottom: 8 }}>
                   Palautumisdata (kellosta/sykevyöstä, valinnainen)
                 </div>
@@ -388,11 +555,96 @@ export default function Home() {
                     <Field label="Uni (h)"><input type="text" value={wodSleepHrs} onChange={(e) => setWodSleepHrs(e.target.value)} style={inputStyle} /></Field>
                   </div>
                 </div>
+              </WodCard>
+            )}
 
-                <button onClick={saveWodToLog} style={{ ...primaryBtn, background: "transparent", border: "1px solid var(--chalk)", color: "var(--chalk)" }}>
-                  Tallenna lokiin
+            {planMode === "manual" && (
+              <Panel style={{ padding: 20, marginBottom: 20 }}>
+                <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 22, marginBottom: 12 }}>LUO OMA TREENI</div>
+                <Field label="Treeni">
+                  <textarea
+                    value={manualDesc}
+                    onChange={(e) => setManualDesc(e.target.value)}
+                    rows={6}
+                    placeholder={"Kirjoita treeni vapaasti, esim.\n21-15-9\nThruster (42,5/30 kg)\nPull-up"}
+                    style={{ ...inputStyle, fontFamily: "'JetBrains Mono', monospace", resize: "vertical" }}
+                  />
+                </Field>
+                <Field label="Tulos (valinnainen)">
+                  <input type="text" value={manualResult} onChange={(e) => setManualResult(e.target.value)} style={inputStyle} />
+                </Field>
+                <button onClick={saveManualWorkout} disabled={!manualDesc.trim() || manualSaving} style={primaryBtn}>
+                  {manualSaving ? "TALLENNETAAN…" : "TALLENNA LOKIIN"}
                 </button>
               </Panel>
+            )}
+
+            {planMode === "photo" && (
+              <Panel style={{ padding: 20, marginBottom: 20 }}>
+                <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 22, marginBottom: 12 }}>OHJATTU WOD — KUVAA TAULU</div>
+                <Field label="Kuva salin liitutaulusta">
+                  <input type="file" accept="image/*" capture="environment" onChange={handlePhotoSelect} style={{ color: "var(--chalk-dim)", fontSize: 13 }} />
+                </Field>
+                {photoPreview && (
+                  <div style={{ marginBottom: 14 }}>
+                    <img src={photoPreview} alt="Esikatselu" style={{ maxWidth: "100%", borderRadius: 4, border: "1px solid var(--line)", display: "block" }} />
+                  </div>
+                )}
+                <button onClick={interpretPhoto} disabled={!photoImage || photoInterpreting} style={primaryBtn}>
+                  {photoInterpreting ? "TULKITAAN…" : "TULKITSE TAULU"}
+                </button>
+                {photoError && <div style={{ color: "var(--red)", fontSize: 13, marginTop: 10 }}>{photoError}</div>}
+              </Panel>
+            )}
+
+            {planMode === "photo" && photoWod && (
+              <WodCard
+                wod={photoWod}
+                onSave={savePhotoWodToLog}
+                warning={photoWod.epavarma ? "Kuva oli osittain epäselvä — tarkista lukemat ennen tallennusta." : null}
+              >
+                <div style={{ fontSize: 11, color: "var(--chalk-dim)", textTransform: "uppercase", marginTop: 18, marginBottom: 8 }}>
+                  Puuttuuko taulusta jokin? Lisää rivi käsin
+                </div>
+                <div style={{ marginBottom: 8 }}>
+                  {[
+                    { key: "alkulammittely", label: "Alkulämmittely" },
+                    { key: "voimaosuus", label: "Voimaosuus" },
+                    { key: "metcon", label: "Metcon" },
+                  ].map((s) => (
+                    <Pill key={s.key} active={photoExtraSection === s.key} onClick={() => setPhotoExtraSection(s.key)}>
+                      {s.label}
+                    </Pill>
+                  ))}
+                </div>
+                <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                  <input
+                    type="text"
+                    value={photoExtraLine}
+                    onChange={(e) => setPhotoExtraLine(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && addPhotoWodLine()}
+                    placeholder="esim. 10 devil's press (2x22,5 kg)"
+                    style={{ ...inputStyle, flex: "1 1 auto" }}
+                  />
+                  <button
+                    onClick={addPhotoWodLine}
+                    disabled={!photoExtraLine.trim()}
+                    style={{
+                      fontFamily: "'Bebas Neue', sans-serif",
+                      fontSize: 14,
+                      padding: "0 18px",
+                      background: "var(--rust)",
+                      color: "var(--bg)",
+                      border: "none",
+                      borderRadius: 3,
+                      cursor: "pointer",
+                      flexShrink: 0,
+                    }}
+                  >
+                    LISÄÄ
+                  </button>
+                </div>
+              </WodCard>
             )}
 
             <Panel style={{ padding: 20, marginTop: 20 }}>

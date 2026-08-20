@@ -13,6 +13,10 @@ export async function POST(request) {
       take: 5,
     });
     const recent = recentWorkouts.map((w) => `${w.date.toISOString().slice(0, 10)}: ${w.desc}`).join("; ");
+    const recentFocuses = recentWorkouts
+      .filter((w) => w.focus)
+      .map((w) => `${w.date.toISOString().slice(0, 10)}: ${w.focus}`)
+      .join(", ");
 
     const prompt = `Olet kokenut CrossFit-valmentaja. Suunnittele yksi tämän päivän treeni (WOD) suomeksi seuraavilla parametreilla:
 - Painopiste: ${focus}
@@ -20,6 +24,7 @@ export async function POST(request) {
 - Taso: ${level}
 - Käytettävissä oleva välineistö: ${equipment}
 - Viimeaikaiset treenit (vältä liiallista toistoa): ${recent || "ei tietoa"}
+- Viimeaikaiset painopisteet (uusin ensin): [${recentFocuses || "ei tietoa"}]
 
 TÄRKEÄÄ liikkeiden nimistä:
 Jos liike on yleisesti tunnettu perusliike (esim. squat, lunge, burpee, mountain climber, push-up, plank, box jump, pull-up), älä selitä sitä sulkeissa - kirjoita vain liikkeen nimi ja toistomäärä/paino, kuten oikealla CrossFit-boksin liitutaululla.
@@ -29,6 +34,9 @@ Kaikki muu teksti (otsikot, kuvaukset, vinkit) kirjoitetaan suomeksi, mutta pid�
 Kirjoita voimaosuuden lisähuomiot ja coach_cue täysinä, luontevina suomenkielisinä lauseina - älä irrallisina sanafragmentteina (esim. älä kirjoita "pakarat alle polvet", vaan "vie lantio niin syvälle, että pakarat laskeutuvat polvien alapuolelle").
 TÄRKEÄÄ rakenteesta: "alkulammittely", "voimaosuus" ja "metcon.liikkeet" ovat JSON-taulukoita (array), EI yhtä pitkää merkkijonoa. Jokainen erillinen liike, sarja tai ohje omana taulukon alkionaan (yksi rivi = yksi asia, ei "•"-merkkejä tai pilkuilla/väliviivoilla yhteen pötköön tungettuja lauseita). Esim. alkulammittely: ["2 kierrosta:", "10 lonkkakierto per suunta", "10 kahvakuula deadlift kevyellä painolla", "8 goblet squat"].
 Älä koskaan lisää pelkkää erotinriviä (esim. "---" tai "***") omaksi taulukon alkiokseen alilohkojen väliin - jos alkulämmittelyssä tai voimaosuudessa on selkeästi eri vaiheita (esim. yleinen lämmittely ja tangonvalmistelu), listaa ne silti yhtenä jatkuvana alkioiden sarjana ilman erotinta, tarvittaessa oman lyhyen otsikkorivin avulla (esim. "Tangonvalmistelu:").
+
+TÄRKEÄÄ painopisteen valinnasta: jos käyttäjän tämänkertainen valitsema painopiste (${focus}) on sama kuin edellisen treenin painopiste, ja edellisestä treenistä on alle 48 tuntia, harkitse silti pyydettyä painopistettä kunnioittaen - käyttäjä on itse valinnut sen tietoisesti. Sen sijaan käytä painopistehistoriaa ohjaamaan METCONIN LIIKEVALINTOJA: jos edellinen treeni painotti ylävartaloa raskaasti (esim. penkki, punnerrus, leuanveto), vältä tässä treenissä samojen lihasryhmien raskasta kuormittamista uudelleen, vaikka painopisteeksi olisi valittu jotain muuta - valitse sen sijaan liikkeitä jotka tukevat palautumista niiltä osin.
+
 JSON-rakenne:
 {
   "nimi": "lyhyt nimi treenille",

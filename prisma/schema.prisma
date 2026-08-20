@@ -30,6 +30,7 @@ model Workout {
   desc      String
   result    String?
   notes     String?
+  focus     String?
 
   // Kellosta/sykevyöstä käsin syötetyt mittarit (vaihe 1: manuaalinen syöttö)
   restHr    Int?

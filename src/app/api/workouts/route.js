@@ -22,6 +22,7 @@ export async function POST(request) {
       desc: body.desc,
       result: body.result || null,
       notes: body.notes || null,
+      focus: body.focus || null,
       restHr: body.restHr ? Number(body.restHr) : null,
       avgHr: body.avgHr ? Number(body.avgHr) : null,
       recovery: body.recovery || null,
