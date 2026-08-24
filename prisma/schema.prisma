@@ -36,6 +36,7 @@ model Workout {
   restHr    Int?
   avgHr     Int?
   recovery  String?
+  hrv       Int?
   sleepHrs  Float?
   rpe       Int?
 

@@ -27,7 +27,8 @@ export async function POST(request) {
           if (w.result) line += ` | tulos: ${w.result}`;
           if (w.restHr) line += ` | aamusyke: ${w.restHr}`;
           if (w.avgHr) line += ` | keskisyke: ${w.avgHr}`;
-          if (w.recovery) line += ` | palautuminen/HRV: ${w.recovery}`;
+          if (w.recovery) line += ` | palautuminen: ${w.recovery}`;
+          if (w.hrv) line += ` | HRV: ${w.hrv}ms`;
           if (w.sleepHrs) line += ` | uni: ${w.sleepHrs}h`;
           if (w.rpe) line += ` | RPE: ${w.rpe}`;
           return line;
@@ -57,6 +58,9 @@ ${prSummary || "ei ennätystietoja"}
 
 Kirjoita suomeksi lyhyt kehitysraportti. 
 Jos mainitset liikkeitä nimeltä, käytä vakiintunutta englanninkielistä CrossFit-terminologiaa (esim. thruster, snatch, pull-up) äläkä käännä niitä.
+
+TÄRKEÄÄ: älä koskaan mainitse tai keksi mitään lukuarvoa jota ei esiinny yllä olevassa treenidatassa. Tämä koskee jokaista mittaria erikseen (aamusyke, keskisyke, HRV, uni, RPE): jos JOKIN näistä mittareista puuttuu KAIKISTA annetuista treenimerkinnöistä, älä mainitse sitä mittaria raportissa lainkaan. Jos taas esimerkiksi HRV-arvoja ON annettu useammassa merkinnässä, voit ja kannattaa kommentoida niiden trendiä (nouseva/laskeva/vakaa) "huomiot"-kentässä, koska se on aidosti hyödyllistä palautetta käyttäjälle. Sama periaate koskee jokaista yksittäistä mittaria itsenäisesti - osa mittareista voi puuttua ja osa olla mukana samassa raportissa.
+
 Vastaa VAIN JSON-muodossa, ei muuta tekstiä, ei markdown-koodilohkoja:
 {
   "yhteenveto": "2-3 lauseen yleiskatsaus kehityksestä",

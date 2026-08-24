@@ -26,6 +26,7 @@ export async function POST(request) {
       restHr: body.restHr ? Number(body.restHr) : null,
       avgHr: body.avgHr ? Number(body.avgHr) : null,
       recovery: body.recovery || null,
+      hrv: body.hrv ? Number(body.hrv) : null,
       sleepHrs: body.sleepHrs ? Number(body.sleepHrs) : null,
       rpe: body.rpe ? Number(body.rpe) : null,
     },

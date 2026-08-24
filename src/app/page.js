@@ -52,6 +52,19 @@ function parseMinutesToSeconds(text) {
   return minutes > 0 ? minutes * 60 : null;
 }
 
+function parseCustomIntervalSeconds(text) {
+  if (!text) return 0;
+  const trimmed = String(text).trim();
+  const mmss = trimmed.match(/^(\d+):(\d{1,2})$/);
+  if (mmss) {
+    const minutes = parseInt(mmss[1], 10);
+    const seconds = parseInt(mmss[2], 10);
+    return minutes * 60 + seconds;
+  }
+  const mins = parseFloat(trimmed.replace(",", "."));
+  return mins > 0 ? Math.round(mins * 60) : 0;
+}
+
 function formatTime(totalSeconds) {
   const s = Math.max(0, Math.floor(totalSeconds));
   const m = Math.floor(s / 60);
@@ -184,8 +197,8 @@ function TimerModal({ wod, onClose }) {
   const [customBeepMinutes, setCustomBeepMinutes] = useState("");
   const audioCtxRef = useRef(null);
 
-  const beepMinutes = beepChoice === "custom" ? parseFloat(String(customBeepMinutes).replace(",", ".")) : beepChoice === "none" ? 0 : Number(beepChoice);
-  const beepSeconds = beepMinutes > 0 ? Math.round(beepMinutes * 60) : 0;
+  const beepSeconds =
+    beepChoice === "custom" ? parseCustomIntervalSeconds(customBeepMinutes) : beepChoice === "none" ? 0 : Number(beepChoice) * 60;
 
   function ensureAudio() {
     if (typeof window === "undefined") return null;
@@ -349,12 +362,12 @@ function TimerModal({ wod, onClose }) {
             ))}
           </Field>
           {beepChoice === "custom" && (
-            <Field label="Äänimerkki joka (min)">
+            <Field label="Äänimerkki joka (min tai mm:ss)">
               <input
                 type="text"
                 value={customBeepMinutes}
                 onChange={(e) => setCustomBeepMinutes(e.target.value)}
-                placeholder="esim. 5"
+                placeholder="esim. 5 tai 1:30"
                 style={inputStyle}
               />
             </Field>
@@ -426,6 +439,7 @@ export default function Home() {
   const [logNotes, setLogNotes] = useState("");
   const [logAvgHr, setLogAvgHr] = useState("");
   const [logRecovery, setLogRecovery] = useState("");
+  const [logHrv, setLogHrv] = useState("");
   const [logSleep, setLogSleep] = useState("");
 
   const [wodAvgHr, setWodAvgHr] = useState("");
@@ -488,15 +502,23 @@ export default function Home() {
     return `${nimi}${muoto}${osa}`;
   }
 
+  function describeWarmup(w) {
+    const value = w.alkulammittely;
+    if (!value) return "";
+    const lines = Array.isArray(value) ? value : [value];
+    return lines.length ? `Alkulämmittely:\n${lines.join("\n")}` : "";
+  }
+
   async function saveWodToLog() {
     if (!wod) return;
+    const notes = [describeWarmup(wod), wod.coach_cue ? `Vinkki: ${wod.coach_cue}` : ""].filter(Boolean).join("\n\n");
     await fetch("/api/workouts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         date: logDate,
         desc: describeWod(wod),
-        notes: wod.coach_cue || "",
+        notes,
         focus,
         avgHr: wodAvgHr,
         recovery: wodRecovery,
@@ -580,13 +602,14 @@ export default function Home() {
 
   async function savePhotoWodToLog() {
     if (!photoWod) return;
+    const notes = ["Tulkittu salin taululta", describeWarmup(photoWod)].filter(Boolean).join("\n\n");
     await fetch("/api/workouts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         date: logDate,
         desc: describeWod(photoWod),
-        notes: "Tulkittu salin taululta",
+        notes,
       }),
     });
     setPhotoWod(null);
@@ -608,6 +631,7 @@ export default function Home() {
         notes: logNotes.trim(),
         avgHr: logAvgHr,
         recovery: logRecovery,
+        hrv: logHrv,
         sleepHrs: logSleep,
       }),
     });
@@ -616,6 +640,7 @@ export default function Home() {
     setLogNotes("");
     setLogAvgHr("");
     setLogRecovery("");
+    setLogHrv("");
     setLogSleep("");
     await loadAll();
   }
@@ -928,6 +953,9 @@ export default function Home() {
                   <Field label="Palautuminen"><input type="text" value={logRecovery} onChange={(e) => setLogRecovery(e.target.value)} style={inputStyle} /></Field>
                 </div>
                 <div style={{ flex: "1 1 100px" }}>
+                  <Field label="HRV (ms)"><input type="text" value={logHrv} onChange={(e) => setLogHrv(e.target.value)} style={inputStyle} /></Field>
+                </div>
+                <div style={{ flex: "1 1 100px" }}>
                   <Field label="Uni (h)"><input type="text" value={logSleep} onChange={(e) => setLogSleep(e.target.value)} style={inputStyle} /></Field>
                 </div>
               </div>
@@ -1146,12 +1174,13 @@ export default function Home() {
                 </div>
               )}
 
-              {(selectedWorkout.avgHr || selectedWorkout.recovery || selectedWorkout.sleepHrs) && (
+              {(selectedWorkout.avgHr || selectedWorkout.recovery || selectedWorkout.hrv || selectedWorkout.sleepHrs) && (
                 <div>
                   <div style={{ fontSize: 11, color: "var(--chalk-dim)", textTransform: "uppercase", marginBottom: 6 }}>Mittarit</div>
                   <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: "var(--steel)", display: "flex", gap: 14, flexWrap: "wrap" }}>
                     {selectedWorkout.avgHr && <span>Keskisyke {selectedWorkout.avgHr}</span>}
                     {selectedWorkout.recovery && <span>Palautuminen {selectedWorkout.recovery}</span>}
+                    {selectedWorkout.hrv && <span>HRV {selectedWorkout.hrv}ms</span>}
                     {selectedWorkout.sleepHrs && <span>Uni {selectedWorkout.sleepHrs}h</span>}
                   </div>
                 </div>
