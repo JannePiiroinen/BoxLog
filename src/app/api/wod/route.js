@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/lib/currentUser";
 
 export async function POST(request) {
   try {
-    const { focus, duration, level, equipment } = await request.json();
+    const { focus, bodyPart, duration, level, equipment } = await request.json();
     const user = await getCurrentUser();
 
     const recentWorkouts = await prisma.workout.findMany({
@@ -20,6 +20,7 @@ export async function POST(request) {
 
     const prompt = `Olet kokenut CrossFit-valmentaja. Suunnittele yksi tämän päivän treeni (WOD) suomeksi seuraavilla parametreilla:
 - Painopiste: ${focus}
+- Kehonosa-painotus: ${bodyPart || "Koko keho"}
 - Kesto: noin ${duration} minuuttia
 - Taso: ${level}
 - Käytettävissä oleva välineistö: ${equipment}
@@ -41,6 +42,8 @@ TÄRKEÄÄ rakenteesta: "alkulammittely", "voimaosuus" ja "metcon.liikkeet" ovat
 Älä koskaan lisää pelkkää erotinriviä (esim. "---" tai "***") omaksi taulukon alkiokseen alilohkojen väliin - jos alkulämmittelyssä tai voimaosuudessa on selkeästi eri vaiheita (esim. yleinen lämmittely ja tangonvalmistelu), listaa ne silti yhtenä jatkuvana alkioiden sarjana ilman erotinta, tarvittaessa oman lyhyen otsikkorivin avulla (esim. "Tangonvalmistelu:").
 
 TÄRKEÄÄ painopisteen valinnasta: jos käyttäjän tämänkertainen valitsema painopiste (${focus}) on sama kuin edellisen treenin painopiste, ja edellisestä treenistä on alle 48 tuntia, harkitse silti pyydettyä painopistettä kunnioittaen - käyttäjä on itse valinnut sen tietoisesti. Sen sijaan käytä painopistehistoriaa ohjaamaan METCONIN LIIKEVALINTOJA: jos edellinen treeni painotti ylävartaloa raskaasti (esim. penkki, punnerrus, leuanveto), vältä tässä treenissä samojen lihasryhmien raskasta kuormittamista uudelleen, vaikka painopisteeksi olisi valittu jotain muuta - valitse sen sijaan liikkeitä jotka tukevat palautumista niiltä osin.
+
+TÄRKEÄÄ kehonosa-painotuksesta: jos kehonosa-painotus on muu kuin "Koko keho", valitse SEKÄ voimaosuuden että metconin liikkeet niin, että ne pääasiassa kuormittavat kyseistä kehonosaa - esim. "Jalat" → kyykky-/maastaveto-/askelkyykky-tyyppiset liikkeet sekä juoksu/hyppelyliikkeet, "Yläkroppa" → punnerrus-/veto-/olkapääliikkeet (esim. push press, pull-up, thruster, box painonnosto ylävartalolla), "Core" → vatsa-/keskivartalostabiliteetti- ja rotaatioliikkeet (esim. toes-to-bar, GHD sit-up, plank-variaatiot), "Selkä / takaketju" → maastaveto-, hip hinge- ja veto-tyyppiset liikkeet (esim. deadlift, kettlebell swing, pull-up). Alkulämmittely saa silti sisältää yleistä koko kehon aktivointia normaalisti - painotus koskee vain varsinaista harjoitusosaa. Jos kehonosa-painotus on "Koko keho", suunnittele normaalisti tasapainoisesti eri kehonosia yhdistäen.
 
 JSON-rakenne:
 {

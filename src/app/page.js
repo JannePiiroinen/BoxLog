@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { LineChart, Line, ResponsiveContainer } from "recharts";
 
 const wodFormats = [
@@ -42,6 +42,21 @@ function resizeImageFile(file, maxDim = 1600, quality = 0.82) {
     };
     img.src = url;
   });
+}
+
+function parseMinutesToSeconds(text) {
+  if (!text || typeof text !== "string") return null;
+  const match = text.match(/(\d+)\s*min/i);
+  if (!match) return null;
+  const minutes = parseInt(match[1], 10);
+  return minutes > 0 ? minutes * 60 : null;
+}
+
+function formatTime(totalSeconds) {
+  const s = Math.max(0, Math.floor(totalSeconds));
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
 }
 
 const inputStyle = {
@@ -111,7 +126,7 @@ function WodLines({ value, fontSize = 14 }) {
   );
 }
 
-function WodCard({ wod, warning, onSave, saveLabel = "Tallenna lokiin", children }) {
+function WodCard({ wod, warning, onSave, saveLabel = "Tallenna lokiin", onOpenTimer, children }) {
   return (
     <Panel style={{ padding: 24, background: "var(--bg3)" }}>
       <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 30, borderBottom: "2px solid var(--rust)", display: "inline-block", marginBottom: 16 }}>
@@ -137,6 +152,14 @@ function WodCard({ wod, warning, onSave, saveLabel = "Tallenna lokiin", children
           <WodLines value={wod.metcon.liikkeet} fontSize={15} />
         </div>
       )}
+      {wod.metcon?.liikkeet && onOpenTimer && (
+        <button
+          onClick={onOpenTimer}
+          style={{ ...primaryBtn, marginBottom: 14, background: "transparent", border: "1px solid var(--steel)", color: "var(--steel)" }}
+        >
+          Käynnistä ajastin
+        </button>
+      )}
       {wod.coach_cue && <div style={{ fontSize: 13, color: "var(--steel)", fontStyle: "italic" }}>Vinkki: {wod.coach_cue}</div>}
       {warning && (
         <div style={{ color: "var(--red)", fontSize: 13, marginTop: 14, padding: "10px 12px", border: "1px solid var(--red)", borderRadius: 3 }}>
@@ -148,6 +171,201 @@ function WodCard({ wod, warning, onSave, saveLabel = "Tallenna lokiin", children
         {saveLabel}
       </button>
     </Panel>
+  );
+}
+
+function TimerModal({ wod, onClose }) {
+  const parsedSeconds = parseMinutesToSeconds(wod?.metcon?.aikaraja);
+  const [totalSeconds, setTotalSeconds] = useState(parsedSeconds);
+  const [remaining, setRemaining] = useState(parsedSeconds || 0);
+  const [running, setRunning] = useState(false);
+  const [manualMinutes, setManualMinutes] = useState("");
+  const [beepChoice, setBeepChoice] = useState("none");
+  const [customBeepMinutes, setCustomBeepMinutes] = useState("");
+  const audioCtxRef = useRef(null);
+
+  const beepMinutes = beepChoice === "custom" ? parseFloat(String(customBeepMinutes).replace(",", ".")) : beepChoice === "none" ? 0 : Number(beepChoice);
+  const beepSeconds = beepMinutes > 0 ? Math.round(beepMinutes * 60) : 0;
+
+  function ensureAudio() {
+    if (typeof window === "undefined") return null;
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return null;
+    if (!audioCtxRef.current) audioCtxRef.current = new Ctx();
+    if (audioCtxRef.current.state === "suspended") audioCtxRef.current.resume();
+    return audioCtxRef.current;
+  }
+
+  function playTone(freq, durationMs) {
+    const ctx = ensureAudio();
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + durationMs / 1000);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + durationMs / 1000 + 0.03);
+  }
+
+  function playEndSound() {
+    playTone(500, 300);
+    setTimeout(() => playTone(500, 300), 400);
+  }
+
+  const runningRef = useRef(running);
+  const beepSecondsRef = useRef(beepSeconds);
+  const remainingRef = useRef(remaining);
+  useEffect(() => {
+    runningRef.current = running;
+  }, [running]);
+  useEffect(() => {
+    beepSecondsRef.current = beepSeconds;
+  }, [beepSeconds]);
+  useEffect(() => {
+    remainingRef.current = remaining;
+  }, [remaining]);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (!runningRef.current) return;
+      // Side effects (audio) live here in the plain interval callback, not in a
+      // setState updater - React Strict Mode double-invokes updater functions in
+      // dev, which would otherwise double-fire the beep/end sound.
+      const next = remainingRef.current - 1;
+      if (next <= 0) {
+        remainingRef.current = 0;
+        setRemaining(0);
+        playEndSound();
+        setRunning(false);
+        return;
+      }
+      remainingRef.current = next;
+      if (beepSecondsRef.current > 0 && next % beepSecondsRef.current === 0) {
+        playTone(800, 200);
+      }
+      setRemaining(next);
+    }, 1000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function handleStart() {
+    let duration = totalSeconds;
+    if (!duration) {
+      const mins = parseFloat(String(manualMinutes).replace(",", "."));
+      if (!mins || mins <= 0) return;
+      duration = Math.round(mins * 60);
+      setTotalSeconds(duration);
+    }
+    ensureAudio();
+    setRemaining((r) => (r <= 0 ? duration : r));
+    setRunning(true);
+  }
+
+  function handleReset() {
+    setRunning(false);
+    setRemaining(totalSeconds || 0);
+  }
+
+  const isLow = totalSeconds != null && remaining <= 10;
+  const finished = totalSeconds && remaining <= 0;
+
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, zIndex: 60 }}
+    >
+      <div onClick={(e) => e.stopPropagation()} style={{ maxWidth: 380, width: "100%" }}>
+        <Panel style={{ padding: 28, background: "var(--bg3)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 22 }}>AJASTIN</div>
+            <button onClick={onClose} style={{ background: "transparent", border: "none", color: "var(--chalk-dim)", fontSize: 18, cursor: "pointer", lineHeight: 1 }}>
+              ✕
+            </button>
+          </div>
+
+          {totalSeconds == null && (
+            <Field label="Kesto (min) — ei löytynyt automaattisesti WOD:sta">
+              <input
+                type="text"
+                value={manualMinutes}
+                onChange={(e) => setManualMinutes(e.target.value)}
+                placeholder="esim. 12"
+                style={inputStyle}
+              />
+            </Field>
+          )}
+
+          <div
+            style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 64,
+              textAlign: "center",
+              color: isLow ? "var(--red)" : "var(--chalk)",
+              margin: "16px 0 2px",
+            }}
+          >
+            {formatTime(remaining)}
+          </div>
+          <div style={{ textAlign: "center", color: finished ? "var(--red)" : "var(--chalk-dim)", fontSize: 12, marginBottom: 18 }}>
+            {finished ? "AIKA LOPPUI" : "jäljellä"}
+          </div>
+
+          <div style={{ display: "flex", gap: 10, justifyContent: "center", marginBottom: 22 }}>
+            {!running ? (
+              <button onClick={handleStart} style={primaryBtn}>KÄYNNISTÄ</button>
+            ) : (
+              <button
+                onClick={() => setRunning(false)}
+                style={{ ...primaryBtn, background: "transparent", border: "1px solid var(--chalk)", color: "var(--chalk)" }}
+              >
+                PYSÄYTÄ
+              </button>
+            )}
+            <button
+              onClick={handleReset}
+              style={{ ...primaryBtn, background: "transparent", border: "1px solid var(--line)", color: "var(--chalk-dim)" }}
+            >
+              NOLLAA
+            </button>
+          </div>
+
+          <Field label="Äänimerkki joka">
+            {[
+              { key: "none", label: "Ei mitään" },
+              { key: "1", label: "1 min" },
+              { key: "2", label: "2 min" },
+              { key: "3", label: "3 min" },
+              { key: "custom", label: "Oma" },
+            ].map((o) => (
+              <Pill key={o.key} active={beepChoice === o.key} onClick={() => setBeepChoice(o.key)}>
+                {o.label}
+              </Pill>
+            ))}
+          </Field>
+          {beepChoice === "custom" && (
+            <Field label="Äänimerkki joka (min)">
+              <input
+                type="text"
+                value={customBeepMinutes}
+                onChange={(e) => setCustomBeepMinutes(e.target.value)}
+                placeholder="esim. 5"
+                style={inputStyle}
+              />
+            </Field>
+          )}
+
+          <div style={{ color: "var(--chalk-dim)", fontSize: 11, marginTop: 8, textAlign: "center" }}>
+            Pidä näyttö pystyssä ajastimen aikana — puhelimen näytön sammuminen keskeyttää ajastimen taustalla useimmilla selaimilla.
+          </div>
+        </Panel>
+      </div>
+    </div>
   );
 }
 
@@ -182,6 +400,7 @@ export default function Home() {
   const [planMode, setPlanMode] = useState("ai");
 
   const [focus, setFocus] = useState("Sekoitus");
+  const [bodyPart, setBodyPart] = useState("Koko keho");
   const [duration, setDuration] = useState(45);
   const [level, setLevel] = useState("RX");
   const [equipment, setEquipment] = useState("Täysi varustus");
@@ -219,6 +438,7 @@ export default function Home() {
   const [report, setReport] = useState(null);
   const [reportLoading, setReportLoading] = useState(false);
   const [selectedWorkout, setSelectedWorkout] = useState(null);
+  const [timerWod, setTimerWod] = useState(null);
 
   const [prName, setPrName] = useState("");
   const [prDate, setPrDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -248,7 +468,7 @@ export default function Home() {
       const res = await fetch("/api/wod", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ focus, duration, level, equipment }),
+        body: JSON.stringify({ focus, bodyPart, duration, level, equipment }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -511,6 +731,13 @@ export default function Home() {
                     </Pill>
                   ))}
                 </Field>
+                <Field label="Kehonosa">
+                  {["Koko keho", "Jalat", "Yläkroppa", "Core", "Selkä"].map((b) => (
+                    <Pill key={b} active={bodyPart === b} onClick={() => setBodyPart(b)}>
+                      {b}
+                    </Pill>
+                  ))}
+                </Field>
                 <Field label="Kesto">
                   {[20, 30, 45, 60].map((d) => (
                     <Pill key={d} active={duration === d} onClick={() => setDuration(d)}>
@@ -526,7 +753,7 @@ export default function Home() {
                   ))}
                 </Field>
                 <Field label="Välineet">
-                  {["Ei välineitä", "Kahvakuula/dumbbell", "Täysi varustus"].map((e) => (
+                  {["Ei välineitä", "Kahvakuula", "Täysi varustus"].map((e) => (
                     <Pill key={e} active={equipment === e} onClick={() => setEquipment(e)}>
                       {e}
                     </Pill>
@@ -540,7 +767,7 @@ export default function Home() {
             )}
 
             {planMode === "ai" && wod && (
-              <WodCard wod={wod} onSave={saveWodToLog}>
+              <WodCard wod={wod} onSave={saveWodToLog} onOpenTimer={() => setTimerWod(wod)}>
                 <div style={{ fontSize: 11, color: "var(--chalk-dim)", textTransform: "uppercase", marginTop: 18, marginBottom: 8 }}>
                   Palautumisdata (kellosta/sykevyöstä, valinnainen)
                 </div>
@@ -601,6 +828,7 @@ export default function Home() {
               <WodCard
                 wod={photoWod}
                 onSave={savePhotoWodToLog}
+                onOpenTimer={() => setTimerWod(photoWod)}
                 warning={photoWod.epavarma ? "Kuva oli osittain epäselvä — tarkista lukemat ennen tallennusta." : null}
               >
                 <div style={{ fontSize: 11, color: "var(--chalk-dim)", textTransform: "uppercase", marginTop: 18, marginBottom: 8 }}>
@@ -814,7 +1042,7 @@ export default function Home() {
                       {data.history.length > 1 && (
                         <div style={{ height: 50 }}>
                           <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={data.history.map((h, i) => ({ ...h, i, v: Number(h.value) }))}>
+                            <LineChart data={data.history.map((h, i) => ({ ...h, i, v: Number(String(h.value).replace(",", ".")) }))}>
                               <Line type="monotone" dataKey="v" stroke="var(--steel)" dot={false} strokeWidth={2} />
                             </LineChart>
                           </ResponsiveContainer>
@@ -951,6 +1179,8 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {timerWod && <TimerModal wod={timerWod} onClose={() => setTimerWod(null)} />}
     </div>
   );
 }
