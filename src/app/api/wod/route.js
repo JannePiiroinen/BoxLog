@@ -26,8 +26,13 @@ export async function POST(request) {
 - Viimeaikaiset treenit (vältä liiallista toistoa): ${recent || "ei tietoa"}
 - Viimeaikaiset painopisteet (uusin ensin): [${recentFocuses || "ei tietoa"}]
 
-TÄRKEÄÄ liikkeiden nimistä:
-Jos liike on yleisesti tunnettu perusliike (esim. squat, lunge, burpee, mountain climber, push-up, plank, box jump, pull-up), älä selitä sitä sulkeissa - kirjoita vain liikkeen nimi ja toistomäärä/paino, kuten oikealla CrossFit-boksin liitutaululla.
+TÄRKEÄÄ liikkeiden nimistä - kaksi eri kategoriaa, älä sekoita niitä:
+
+1. VARSINAISET CROSSFIT-LIIKKEET pysyvät englanniksi sellaisenaan (näitä EI käännetä koskaan): thruster, wall ball, box jump, pull-up, kettlebell swing, clean and jerk, snatch, deadlift, burpee, double-under, pistol squat, mountain climber, muscle-up, toes-to-bar, handstand push-up, push-up, ja muut vastaavat vakiintuneet CrossFit-liikkeiden nimet. Näille EI kirjoiteta selitystä sulkeissa - vain nimi ja toistomäärä/paino, kuten oikealla CrossFit-boksin liitutaululla.
+
+2. YLEISET ALKULÄMMITTELY- JA LIIKKUVUUSTERMIT käännetään AINA suomeksi, koska niitä ei sanota englanniksi suomalaisilla saleilla. Käytä vakiintuneita suomennoksia, esim.: lunge → askelkyykky, hinge / hip hinge → lonkkasarana, kevyt/kehon painon squat (esim. air squat lämmittelyssä) → kyykky, hip circle → lonkkakierto, arm circle → olkapyöritys, high knees → polvennostojuoksu, butt kick → kantapotku, plank → lankku, side lunge → sivuaskelkyykky, calf raise → pohjenousu, glute bridge → lantionnosto / silta, cat-cow → kissa-lehmä-liike. Jos jokin yleistermi ei ole tässä listassa, käännä se järkevällä suomenkielisellä vastineella samalla periaatteella - älä koskaan jätä yleistä alkulämmittely-/liikkuvuustermiä englanniksi. Näille käännetyille termeille ei myöskään kirjoiteta selitystä sulkeissa, ellei kyseessä ole muunneltu/skaalattu versio (ks. kohta alla).
+
+Älä koskaan yhdistä näitä kahta kategoriaa sekakielisiksi keksityiksi yhdyssanoiksi (esim. "pistoolimaa-kyykky" on aina väärin).
 LISÄÄ sen sijaan lyhyt (max 5-8 sanan) suomenkielinen selitys sulkeissa aina, kun liike on: (a) tangonvalmistelu- tai olympiannostoliike (esim. puutanko pass-through, muscle snatch, overhead squat puutangolla, positional clean), (b) harvinaisempi gymnastiikka- tai lisäliike, tai (c) muunneltu/skaalattu versio perusliikkeestä.
 Kun alkulämmittelyssä tarvitaan kevyt väline tangonvalmisteluun, käytä aina termiä "puutanko" (ei "PVC", "PVC-putki" tai "puukeppi") - saleilla käytetään puutankoja, ei muoviputkia.
 Kaikki muu teksti (otsikot, kuvaukset, vinkit) kirjoitetaan suomeksi, mutta pidä ne lyhyinä - älä kirjoita fysioterapiamaisia pitkiä ohjeita.

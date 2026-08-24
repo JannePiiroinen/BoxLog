@@ -492,7 +492,7 @@ export default function Home() {
           <div>
             <Field label="Tila">
               {[
-                { key: "ai", label: "AI luo WOD" },
+                { key: "ai", label: "Luo WOD" },
                 { key: "manual", label: "Luo oma" },
                 { key: "photo", label: "Ohjattu WOD" },
               ].map((m) => (
