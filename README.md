@@ -29,7 +29,7 @@ npx prisma studio
 ```
 Avaa selaimeen visuaalisen näkymän tietokannan riveihin — hyödyllinen debuggaukseen.
 
-## 2. Jaettava live-esikatselu (esim. salin omistajille näytettäväksi)
+## 2. Jaettava live-esikatselu
 
 Kun haluat jakaa linkin jonka voi avata kuka tahansa (ei vain omalla koneellasi ajettuna):
 
