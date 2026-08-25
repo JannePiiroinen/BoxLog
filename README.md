@@ -1,4 +1,4 @@
-# BoxLog — Vaihe 1
+# BoksiLoki — Vaihe 1
 
 AI-WOD-generaattori, treenilogi ja kehitysraportit CrossFit-urheilijoille.
 Tämä on ensimmäinen oikea (ei-artifact) versio: Next.js + Prisma + Postgres.
@@ -36,7 +36,7 @@ Kun haluat jakaa linkin jonka voi avata kuka tahansa (ei vain omalla koneellasi 
 1. Luo GitHub-repo ja pushaa tämä projekti sinne
 2. Mene [vercel.com](https://vercel.com), kirjaudu GitHub-tunnuksilla, "Import Project" ja valitse repo
 3. Lisää samat ympäristömuuttujat (`DATABASE_URL`, `ANTHROPIC_API_KEY`) Vercelin Settings → Environment Variables -kohtaan
-4. Deploy — saat julkisen `https://boxlog-xxxx.vercel.app`-osoitteen
+4. Deploy — saat julkisen `https://boksiloki-xxxx.vercel.app`-osoitteen
 
 Tämän jälkeen **jokainen git push päivittää live-version automaattisesti** muutaman sekunnin viiveellä —
 tämä on käytännössä "reaaliaikainen" jaettava ympäristö ilman että sinun tarvitsee pyörittää omaa palvelinta.

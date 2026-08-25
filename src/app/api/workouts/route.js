@@ -4,6 +4,8 @@ import { getCurrentUser } from "@/lib/currentUser";
 
 export async function GET() {
   const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Ei kirjauduttu" }, { status: 401 });
+
   const workouts = await prisma.workout.findMany({
     where: { userId: user.id },
     orderBy: { date: "desc" },
@@ -13,6 +15,8 @@ export async function GET() {
 
 export async function POST(request) {
   const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Ei kirjauduttu" }, { status: 401 });
+
   const body = await request.json();
 
   const workout = await prisma.workout.create({
@@ -36,10 +40,14 @@ export async function POST(request) {
 }
 
 export async function DELETE(request) {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Ei kirjauduttu" }, { status: 401 });
+
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id puuttuu" }, { status: 400 });
 
-  await prisma.workout.delete({ where: { id } });
+  const { count } = await prisma.workout.deleteMany({ where: { id, userId: user.id } });
+  if (count === 0) return NextResponse.json({ error: "Merkintää ei löytynyt" }, { status: 404 });
   return NextResponse.json({ ok: true });
 }

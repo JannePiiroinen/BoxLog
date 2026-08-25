@@ -6,6 +6,7 @@ export async function POST(request) {
   try {
     const { focus, bodyPart, duration, level, equipment } = await request.json();
     const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Ei kirjauduttu" }, { status: 401 });
 
     const recentWorkouts = await prisma.workout.findMany({
       where: { userId: user.id },

@@ -6,6 +6,7 @@ export async function POST(request) {
   try {
     const { rangeMonths = 2 } = await request.json();
     const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Ei kirjauduttu" }, { status: 401 });
 
     const now = new Date();
     const cutoff = new Date(now);

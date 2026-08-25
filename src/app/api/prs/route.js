@@ -4,6 +4,8 @@ import { getCurrentUser } from "@/lib/currentUser";
 
 export async function GET() {
   const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Ei kirjauduttu" }, { status: 401 });
+
   const records = await prisma.personalRecord.findMany({
     where: { userId: user.id },
     orderBy: { date: "asc" },
@@ -20,6 +22,8 @@ export async function GET() {
 
 export async function POST(request) {
   const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Ei kirjauduttu" }, { status: 401 });
+
   const body = await request.json();
 
   if (!body.label || !body.value) {

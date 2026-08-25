@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useSession, signIn, signOut } from "next-auth/react";
 import { LineChart, Line, ResponsiveContainer } from "recharts";
+
+// Sama lippu kuin src/lib/currentUser.js:ssä - kytkee kirjautumispakon pois päältä
+// (demo/myyntivaihe). Poista tämä (tai aseta false) kun Google-tunnukset on hankittu.
+const SKIP_AUTH = process.env.NEXT_PUBLIC_SKIP_AUTH === "true";
 
 const wodFormats = [
   { term: "For Time", desc: "Suorita liikkeet/kierrokset mahdollisimman nopeasti, mitataan aika. Klassinen \"kuka on nopein\" -formaatti (esim. Fran)." },
@@ -329,7 +334,7 @@ function TimerModal({ wod, onClose }) {
             {finished ? "AIKA LOPPUI" : "jäljellä"}
           </div>
 
-          <div style={{ display: "flex", gap: 10, justifyContent: "center", marginBottom: 22 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center", marginBottom: 22 }}>
             {!running ? (
               <button onClick={handleStart} style={primaryBtn}>KÄYNNISTÄ</button>
             ) : (
@@ -405,6 +410,7 @@ function Pill({ active, onClick, children }) {
 }
 
 export default function Home() {
+  const { data: session, status } = useSession();
   const [tab, setTab] = useState("plan");
   const [workouts, setWorkouts] = useState([]);
   const [prs, setPrs] = useState({});
@@ -471,8 +477,8 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    loadAll();
-  }, [loadAll]);
+    if (SKIP_AUTH || status === "authenticated") loadAll();
+  }, [status, loadAll]);
 
   async function generateWod() {
     setGenerating(true);
@@ -699,14 +705,59 @@ export default function Home() {
     }
   }
 
+  if (!SKIP_AUTH && status === "loading") {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ color: "var(--chalk-dim)", fontFamily: "'JetBrains Mono', monospace", fontSize: 13 }}>Ladataan…</div>
+      </div>
+    );
+  }
+
+  if (!SKIP_AUTH && status === "unauthenticated") {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+        <div style={{ maxWidth: 380, width: "100%" }}>
+          <div style={{ marginBottom: 22, textAlign: "center" }}>
+            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 42 }}>
+              BOKSI<span style={{ color: "var(--rust)" }}>LOKI</span>
+            </div>
+            <div style={{ color: "var(--chalk-dim)", fontSize: 13 }}>Oma valmentaja ja lokikirja.</div>
+          </div>
+          <Panel style={{ padding: 28, textAlign: "center" }}>
+            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 22, marginBottom: 16 }}>KIRJAUDU SISÄÄN</div>
+            <button onClick={() => signIn("google")} style={{ ...primaryBtn, width: "100%" }}>
+              Kirjaudu Googlella
+            </button>
+          </Panel>
+          <div style={{ textAlign: "center", marginTop: 16 }}>
+            <a href="/tietosuoja" style={{ color: "var(--chalk-dim)", fontSize: 12 }}>Tietosuoja</a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ minHeight: "100vh", padding: "24px 16px 60px" }}>
       <div style={{ maxWidth: 780, margin: "0 auto" }}>
-        <div style={{ marginBottom: 22 }}>
-          <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 42 }}>
-            BOX<span style={{ color: "var(--rust)" }}>LOG</span>
+        <div style={{ marginBottom: 22, display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
+          <div>
+            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 42 }}>
+              BOKSI<span style={{ color: "var(--rust)" }}>LOKI</span>
+            </div>
+            <div style={{ color: "var(--chalk-dim)", fontSize: 13 }}>Oma valmentaja ja lokikirja.</div>
           </div>
-          <div style={{ color: "var(--chalk-dim)", fontSize: 13 }}>Oma valmentaja ja lokikirja.</div>
+          {session && (
+            <div style={{ textAlign: "right", fontSize: 12, color: "var(--chalk-dim)", minWidth: 0, maxWidth: "100%", wordBreak: "break-word" }}>
+              <div>{session.user?.name || session.user?.email}</div>
+              <button
+                onClick={() => signOut()}
+                style={{ background: "transparent", border: "none", color: "var(--steel)", cursor: "pointer", fontSize: 12, padding: 0, marginTop: 4 }}
+              >
+                Kirjaudu ulos
+              </button>
+            </div>
+          )}
         </div>
 
         <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
@@ -839,7 +890,11 @@ export default function Home() {
                 </Field>
                 {photoPreview && (
                   <div style={{ marginBottom: 14 }}>
-                    <img src={photoPreview} alt="Esikatselu" style={{ maxWidth: "100%", borderRadius: 4, border: "1px solid var(--line)", display: "block" }} />
+                    <img
+                      src={photoPreview}
+                      alt="Esikatselu"
+                      style={{ maxWidth: "100%", height: "auto", borderRadius: 4, border: "1px solid var(--line)", display: "block" }}
+                    />
                   </div>
                 )}
                 <button onClick={interpretPhoto} disabled={!photoImage || photoInterpreting} style={primaryBtn}>
@@ -870,14 +925,14 @@ export default function Home() {
                     </Pill>
                   ))}
                 </div>
-                <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
                   <input
                     type="text"
                     value={photoExtraLine}
                     onChange={(e) => setPhotoExtraLine(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && addPhotoWodLine()}
                     placeholder="esim. 10 devil's press (2x22,5 kg)"
-                    style={{ ...inputStyle, flex: "1 1 auto" }}
+                    style={{ ...inputStyle, flex: "1 1 160px", minWidth: 0 }}
                   />
                   <button
                     onClick={addPhotoWodLine}
@@ -1057,7 +1112,7 @@ export default function Home() {
                 Ei vielä ennätyksiä. Lisää ensimmäinen liike yllä olevalla lomakkeella.
               </div>
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 14 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 14 }}>
                 {Object.entries(prs).map(([label, data]) => {
                   const sorted = [...data.history].sort((a, b) => (a.date < b.date ? 1 : -1));
                   const latest = sorted[0];
@@ -1128,6 +1183,10 @@ export default function Home() {
             )}
           </div>
         )}
+
+        <div style={{ textAlign: "center", marginTop: 30 }}>
+          <a href="/tietosuoja" style={{ color: "var(--chalk-dim)", fontSize: 12 }}>Tietosuoja</a>
+        </div>
       </div>
 
       {selectedWorkout && (
@@ -1220,8 +1279,13 @@ function PrEntryRow({ entry, unit, editing, onEdit, onCancel, onSave, onDelete }
 
   if (editing) {
     return (
-      <div style={{ display: "flex", gap: 6, marginTop: 8, alignItems: "center" }}>
-        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ ...inputStyle, padding: "6px 8px", fontSize: 12, flex: "1 1 auto" }} />
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8, alignItems: "center" }}>
+        <input
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          style={{ ...inputStyle, padding: "6px 8px", fontSize: 12, flex: "1 1 140px", minWidth: 0 }}
+        />
         <input
           type="text"
           value={value}

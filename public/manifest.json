@@ -1,0 +1,15 @@
+{
+  "name": "BoksiLoki",
+  "short_name": "BoksiLoki",
+  "description": "AI-WOD-generaattori, treenilogi ja kehitysraportit CrossFit-urheilijoille",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1F2421",
+  "theme_color": "#1F2421",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
