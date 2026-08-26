@@ -721,7 +721,7 @@ export default function Home() {
             <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 42 }}>
               BOKSI<span style={{ color: "var(--rust)" }}>LOKI</span>
             </div>
-            <div style={{ color: "var(--chalk-dim)", fontSize: 13 }}>Oma valmentaja ja lokikirja.</div>
+            <div style={{ color: "var(--chalk-dim)", fontSize: 13 }}>WOD-generaattori, lokikirja, ennätykset sekä raportointi treenaamisen tueksi.</div>
           </div>
           <Panel style={{ padding: 28, textAlign: "center" }}>
             <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 22, marginBottom: 16 }}>KIRJAUDU SISÄÄN</div>
@@ -745,7 +745,7 @@ export default function Home() {
             <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 42 }}>
               BOKSI<span style={{ color: "var(--rust)" }}>LOKI</span>
             </div>
-            <div style={{ color: "var(--chalk-dim)", fontSize: 13 }}>Oma valmentaja ja lokikirja.</div>
+            <div style={{ color: "var(--chalk-dim)", fontSize: 13 }}>WOD-generaattori, lokikirja, ennätykset sekä raportointi treenaamisen tueksi.</div>
           </div>
           {session && (
             <div style={{ textAlign: "right", fontSize: 12, color: "var(--chalk-dim)", minWidth: 0, maxWidth: "100%", wordBreak: "break-word" }}>
