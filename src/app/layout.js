@@ -1,5 +1,4 @@
 import "./globals.css";
-import Providers from "./providers";
 
 export const metadata = {
   title: "BoksiLoki",
@@ -19,7 +18,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="fi">
       <body>
-        <Providers>{children}</Providers>
+        {children}
       </body>
     </html>
   );

@@ -1,12 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useSession, signIn, signOut } from "next-auth/react";
 import { LineChart, Line, ResponsiveContainer } from "recharts";
-
-// Sama lippu kuin src/lib/currentUser.js:ssä - kytkee kirjautumispakon pois päältä
-// (demo/myyntivaihe). Poista tämä (tai aseta false) kun Google-tunnukset on hankittu.
-const SKIP_AUTH = process.env.NEXT_PUBLIC_SKIP_AUTH === "true";
 
 const wodFormats = [
   { term: "For Time", desc: "Suorita liikkeet/kierrokset mahdollisimman nopeasti, mitataan aika. Klassinen \"kuka on nopein\" -formaatti (esim. Fran)." },
@@ -410,7 +405,6 @@ function Pill({ active, onClick, children }) {
 }
 
 export default function Home() {
-  const { data: session, status } = useSession();
   const [tab, setTab] = useState("plan");
   const [workouts, setWorkouts] = useState([]);
   const [prs, setPrs] = useState({});
@@ -477,8 +471,8 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (SKIP_AUTH || status === "authenticated") loadAll();
-  }, [status, loadAll]);
+    loadAll();
+  }, [loadAll]);
 
   async function generateWod() {
     setGenerating(true);
@@ -705,38 +699,6 @@ export default function Home() {
     }
   }
 
-  if (!SKIP_AUTH && status === "loading") {
-    return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ color: "var(--chalk-dim)", fontFamily: "'JetBrains Mono', monospace", fontSize: 13 }}>Ladataan…</div>
-      </div>
-    );
-  }
-
-  if (!SKIP_AUTH && status === "unauthenticated") {
-    return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-        <div style={{ maxWidth: 380, width: "100%" }}>
-          <div style={{ marginBottom: 22, textAlign: "center" }}>
-            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 42 }}>
-              BOKSI<span style={{ color: "var(--rust)" }}>LOKI</span>
-            </div>
-            <div style={{ color: "var(--chalk-dim)", fontSize: 13 }}>WOD-generaattori, lokikirja, ennätykset sekä raportointi treenaamisen tueksi.</div>
-          </div>
-          <Panel style={{ padding: 28, textAlign: "center" }}>
-            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 22, marginBottom: 16 }}>KIRJAUDU SISÄÄN</div>
-            <button onClick={() => signIn("google")} style={{ ...primaryBtn, width: "100%" }}>
-              Kirjaudu Googlella
-            </button>
-          </Panel>
-          <div style={{ textAlign: "center", marginTop: 16 }}>
-            <a href="/tietosuoja" style={{ color: "var(--chalk-dim)", fontSize: 12 }}>Tietosuoja</a>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div style={{ minHeight: "100vh", padding: "24px 16px 60px" }}>
       <div style={{ maxWidth: 780, margin: "0 auto" }}>
@@ -747,17 +709,6 @@ export default function Home() {
             </div>
             <div style={{ color: "var(--chalk-dim)", fontSize: 13 }}>WOD-generaattori, lokikirja, ennätykset sekä raportointi treenaamisen tueksi.</div>
           </div>
-          {session && (
-            <div style={{ textAlign: "right", fontSize: 12, color: "var(--chalk-dim)", minWidth: 0, maxWidth: "100%", wordBreak: "break-word" }}>
-              <div>{session.user?.name || session.user?.email}</div>
-              <button
-                onClick={() => signOut()}
-                style={{ background: "transparent", border: "none", color: "var(--steel)", cursor: "pointer", fontSize: 12, padding: 0, marginTop: 4 }}
-              >
-                Kirjaudu ulos
-              </button>
-            </div>
-          )}
         </div>
 
         <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>

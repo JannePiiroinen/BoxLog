@@ -15,10 +15,6 @@ const sections = [
     title: "2. Mitä tietoja keräämme",
     blocks: [
       {
-        heading: "Tunnistetiedot (kirjautumisen yhteydessä)",
-        bullets: ["Nimi ja sähköpostiosoite (Google-kirjautumisen kautta)"],
-      },
-      {
         heading: "Treenidata jonka syötät itse",
         bullets: ["Treenien kuvaukset, tulokset, päivämäärät", "Henkilökohtaiset ennätykset (liikkeen nimi, päivämäärä, kilomäärä)"],
       },

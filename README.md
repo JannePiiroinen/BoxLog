@@ -55,7 +55,8 @@ prisma/schema.prisma      - tietokantamalli
 
 ## 4. Puuttuu vielä (seuraavat vaiheet)
 
-- **Kirjautuminen** — nyt kaikki data menee yhdelle kovakoodatulle testikäyttäjälle
-  (`src/lib/currentUser.js`). Seuraava askel: NextAuth.js tai Clerk.
+- **Kirjautuminen** — kaikki data menee yhdelle kovakoodatulle testikäyttäjälle
+  (`src/lib/currentUser.js`). NextAuth-toteutus poistettiin demo/myyntivaiheen ajaksi
+  (ks. git-historia, commit 06dc76e) — asennetaan takaisin kun kirjautuminen otetaan käyttöön.
 - **Salikohtaisuus** — Gym-malli ja jäsenyydet, kun laajennetaan useammalle salille
 - **Maksut/tilaus** — Stripe, kun tuote on myyntikunnossa
