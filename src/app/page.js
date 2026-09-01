@@ -837,7 +837,7 @@ export default function Home() {
               <Panel style={{ padding: 20, marginBottom: 20 }}>
                 <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 22, marginBottom: 12 }}>OHJATTU WOD — KUVAA TAULU</div>
                 <Field label="Kuva salin liitutaulusta">
-                  <input type="file" accept="image/*" capture="environment" onChange={handlePhotoSelect} style={{ color: "var(--chalk-dim)", fontSize: 13 }} />
+                  <input type="file" accept="image/*" onChange={handlePhotoSelect} style={{ color: "var(--chalk-dim)", fontSize: 13 }} />
                 </Field>
                 {photoPreview && (
                   <div style={{ marginBottom: 14 }}>
