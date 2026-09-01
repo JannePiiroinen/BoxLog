@@ -74,6 +74,7 @@ function formatTime(totalSeconds) {
 
 const inputStyle = {
   width: "100%",
+  minWidth: 0,
   boxSizing: "border-box",
   background: "#171a18",
   border: "1px solid var(--line)",
@@ -1036,23 +1037,19 @@ export default function Home() {
                   </Pill>
                 ))}
               </Field>
-              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-                <div style={{ flex: "1 1 160px" }}>
-                  <Field label="Päivämäärä">
-                    <input type="date" value={prDate} onChange={(e) => setPrDate(e.target.value)} style={inputStyle} />
-                  </Field>
-                </div>
-                <div style={{ flex: "1 1 120px" }}>
-                  <Field label={prUnit === "kg" ? "Kilomäärä (kg)" : prUnit === "toistoa" ? "Toistot" : "Aika (esim. 3:45)"}>
-                    <input
-                      type="text"
-                      placeholder={prUnit === "kg" ? "esim. 100" : prUnit === "toistoa" ? "esim. 3" : "esim. 3:45"}
-                      value={prValue}
-                      onChange={(e) => setPrValue(e.target.value)}
-                      style={inputStyle}
-                    />
-                  </Field>
-                </div>
+              <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 12 }}>
+                <Field label="Päivämäärä">
+                  <input type="date" value={prDate} onChange={(e) => setPrDate(e.target.value)} style={inputStyle} />
+                </Field>
+                <Field label={prUnit === "kg" ? "Kilomäärä (kg)" : prUnit === "toistoa" ? "Toistot" : "Aika (esim. 3:45)"}>
+                  <input
+                    type="text"
+                    placeholder={prUnit === "kg" ? "esim. 100" : prUnit === "toistoa" ? "esim. 3" : "esim. 3:45"}
+                    value={prValue}
+                    onChange={(e) => setPrValue(e.target.value)}
+                    style={inputStyle}
+                  />
+                </Field>
               </div>
               <button onClick={addPr} style={primaryBtn}>TALLENNA</button>
               {prError && <div style={{ color: "var(--red)", fontSize: 13, marginTop: 10 }}>{prError}</div>}
