@@ -84,6 +84,15 @@ const inputStyle = {
   fontSize: 13,
 };
 
+// iOS:n WebKit-moottori (Safari ja kaikki iPhone-selaimet, myös Chrome) ei aina tottele
+// width/min-width -määrityksiä input[type=date]:lle natiivin ulkoasun kanssa, jolloin kenttä
+// ylileveä. -webkit-appearance: none poistaa natiivin renderöinnin, jolloin CSS-leveys pätee.
+const dateInputStyle = {
+  ...inputStyle,
+  WebkitAppearance: "none",
+  appearance: "none",
+};
+
 const primaryBtn = {
   fontFamily: "'Bebas Neue', sans-serif",
   fontSize: 18,
@@ -941,7 +950,7 @@ export default function Home() {
             <Panel style={{ padding: 20, marginBottom: 20 }}>
               <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 22, marginBottom: 12 }}>LISÄÄ MERKINTÄ</div>
               <Field label="Päivämäärä">
-                <input type="date" value={logDate} onChange={(e) => setLogDate(e.target.value)} style={inputStyle} />
+                <input type="date" value={logDate} onChange={(e) => setLogDate(e.target.value)} style={dateInputStyle} />
               </Field>
               <Field label="Treeni">
                 <input type="text" value={logDesc} onChange={(e) => setLogDesc(e.target.value)} style={inputStyle} />
@@ -1039,7 +1048,7 @@ export default function Home() {
               </Field>
               <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 12 }}>
                 <Field label="Päivämäärä">
-                  <input type="date" value={prDate} onChange={(e) => setPrDate(e.target.value)} style={inputStyle} />
+                  <input type="date" value={prDate} onChange={(e) => setPrDate(e.target.value)} style={dateInputStyle} />
                 </Field>
                 <Field label={prUnit === "kg" ? "Kilomäärä (kg)" : prUnit === "toistoa" ? "Toistot" : "Aika (esim. 3:45)"}>
                   <input
@@ -1232,7 +1241,7 @@ function PrEntryRow({ entry, unit, editing, onEdit, onCancel, onSave, onDelete }
           type="date"
           value={date}
           onChange={(e) => setDate(e.target.value)}
-          style={{ ...inputStyle, padding: "6px 8px", fontSize: 12, flex: "1 1 140px", minWidth: 0 }}
+          style={{ ...dateInputStyle, padding: "6px 8px", fontSize: 12, flex: "1 1 140px", minWidth: 0 }}
         />
         <input
           type="text"
