@@ -521,12 +521,18 @@ export default function Home() {
   const [editingPrId, setEditingPrId] = useState(null);
 
   const loadAll = useCallback(async () => {
-    const [wRes, pRes] = await Promise.all([fetch("/api/workouts"), fetch("/api/prs")]);
-    const wData = await wRes.json();
-    const pData = await pRes.json();
-    setWorkouts(wData.workouts || []);
-    setPrs(pData.prs || {});
-    setLoaded(true);
+    try {
+      const [wRes, pRes] = await Promise.all([fetch("/api/workouts"), fetch("/api/prs")]);
+      const wData = await wRes.json();
+      const pData = await pRes.json();
+      setWorkouts(wData.workouts || []);
+      setPrs(pData.prs || {});
+    } catch (e) {
+      // Verkko- tai palvelinvirhe (esim. huono yhteys) - ei jätetä "Ladataan…"-tilaan jumiin,
+      // näytetään tyhjä näkymä jotta käyttäjä voi yrittää uudelleen (esim. päivittämällä sivun).
+    } finally {
+      setLoaded(true);
+    }
   }, []);
 
   useEffect(() => {
