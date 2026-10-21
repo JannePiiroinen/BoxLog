@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/currentUser";
+import { subscriptionRequired } from "@/lib/subscription";
 
 export async function POST(request) {
   try {
     const { rangeMonths = 2 } = await request.json();
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: "Ei kirjauduttu" }, { status: 401 });
+    const gate = subscriptionRequired(user);
+    if (gate) return gate;
 
     const now = new Date();
     const cutoff = new Date(now);

@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/currentUser";
+import { subscriptionRequired } from "@/lib/subscription";
 
 export async function POST(request) {
   try {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: "Ei kirjauduttu" }, { status: 401 });
+    const gate = subscriptionRequired(user);
+    if (gate) return gate;
 
     const { imageBase64, mediaType } = await request.json();
     if (!imageBase64 || !mediaType) {

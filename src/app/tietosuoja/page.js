@@ -28,6 +28,10 @@ const sections = [
         text:
           "Näitä mittareita käsitellään GDPR:n tarkoittamana erityisenä henkilötietoryhmänä (terveystieto). Käsittelemme niitä vain, jos syötät ne itse vapaaehtoisesti — käsittelyn peruste on tällöin nimenomainen suostumuksesi.",
       },
+      {
+        text:
+          "Suostumus kysytään erillisellä valintaruudulla aina kun syötät terveysmittareita, etkä voi tallentaa niitä ilman rastitusta. Koska sovelluksessa ei tällä hetkellä ole kirjautumista, suostumus ja sen antopäivä tallennetaan paikallisesti omaan selaimeesi — et voi antaa suostumusta toisen puolesta, eikä se siirry laitteiden välillä. Voit peruuttaa suostumuksen milloin tahansa poistamalla rastin.",
+      },
     ],
   },
   {

@@ -105,6 +105,33 @@ const primaryBtn = {
   cursor: "pointer",
 };
 
+const HEALTH_CONSENT_STORAGE_KEY = "boksiloki_health_consent";
+
+// Terveysmittarien (syke/HRV/uni/RPE) käsittely vaatii GDPR:n mukaisen nimenomaisen
+// suostumuksen, koska niitä lähetetään tekoälyn (Anthropic, Yhdysvallat) käsiteltäväksi.
+// Kirjautuminen on pois käytöstä, joten suostumus tallennetaan paikallisesti selaimeen
+// (ei User.healthConsentAt -kenttään) - ks. tietosuojaseloste.
+function HealthConsentCheckbox({ checked, onChange }) {
+  return (
+    <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12, color: "var(--chalk-dim)", marginBottom: 10, cursor: "pointer" }}>
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        style={{ marginTop: 2, flexShrink: 0 }}
+      />
+      <span>
+        Annan suostumukseni siihen, että syöttämäni terveysmittarit (esim. syke, HRV, uni) tallennetaan palveluun ja
+        lähetetään tekoälyn käsiteltäväksi treeniehdotusten ja raporttien tuottamista varten. Tekoälyn käsittely
+        tapahtuu Yhdysvalloissa. Voin peruuttaa suostumuksen milloin tahansa.{" "}
+        <a href="/tietosuoja" target="_blank" rel="noopener noreferrer" style={{ color: "var(--steel)" }}>
+          Lue tietosuojaseloste.
+        </a>
+      </span>
+    </label>
+  );
+}
+
 function Panel({ children, style, onClick }) {
   return (
     <div onClick={onClick} style={{ background: "var(--bg2)", border: "1px solid var(--line)", borderRadius: 4, ...style }}>
@@ -458,6 +485,28 @@ export default function Home() {
 
   const [showGlossary, setShowGlossary] = useState(false);
 
+  const [healthConsent, setHealthConsent] = useState(false);
+
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(HEALTH_CONSENT_STORAGE_KEY) || "{}");
+      if (stored.given) setHealthConsent(true);
+    } catch {
+      // localStorage ei käytettävissä (esim. yksityinen selaus) - jätetään rastittamatta
+    }
+  }, []);
+
+  function updateHealthConsent(checked) {
+    setHealthConsent(checked);
+    try {
+      const prev = JSON.parse(localStorage.getItem(HEALTH_CONSENT_STORAGE_KEY) || "{}");
+      const at = checked ? new Date().toISOString() : prev.at || null;
+      localStorage.setItem(HEALTH_CONSENT_STORAGE_KEY, JSON.stringify({ given: checked, at }));
+    } catch {
+      // ei kriittistä - kenttien disabled-tila nojaa silti React-tilaan tämän istunnon ajan
+    }
+  }
+
   const [reportRange, setReportRange] = useState(2);
   const [report, setReport] = useState(null);
   const [reportLoading, setReportLoading] = useState(false);
@@ -494,6 +543,7 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ focus, bodyPart, duration, level, equipment }),
       });
+      if (res.status === 402) return (window.location.href = "/tilaus");
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setWod(data.wod);
@@ -530,9 +580,9 @@ export default function Home() {
         desc: describeWod(wod),
         notes,
         focus,
-        avgHr: wodAvgHr,
-        recovery: wodRecovery,
-        sleepHrs: wodSleepHrs,
+        avgHr: healthConsent ? wodAvgHr : "",
+        recovery: healthConsent ? wodRecovery : "",
+        sleepHrs: healthConsent ? wodSleepHrs : "",
       }),
     });
     setWodAvgHr("");
@@ -586,6 +636,7 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ imageBase64: photoImage.base64, mediaType: photoImage.mediaType }),
       });
+      if (res.status === 402) return (window.location.href = "/tilaus");
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setPhotoWod(data.wod);
@@ -639,10 +690,10 @@ export default function Home() {
         desc: logDesc.trim(),
         result: logResult.trim(),
         notes: logNotes.trim(),
-        avgHr: logAvgHr,
-        recovery: logRecovery,
-        hrv: logHrv,
-        sleepHrs: logSleep,
+        avgHr: healthConsent ? logAvgHr : "",
+        recovery: healthConsent ? logRecovery : "",
+        hrv: healthConsent ? logHrv : "",
+        sleepHrs: healthConsent ? logSleep : "",
       }),
     });
     setLogDesc("");
@@ -700,6 +751,7 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ rangeMonths: reportRange }),
       });
+      if (res.status === 402) return (window.location.href = "/tilaus");
       const data = await res.json();
       setReport(data.report);
     } catch (e) {
@@ -808,15 +860,16 @@ export default function Home() {
                 <div style={{ fontSize: 11, color: "var(--chalk-dim)", textTransform: "uppercase", marginTop: 18, marginBottom: 8 }}>
                   Palautumisdata (kellosta/sykevyöstä, valinnainen)
                 </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 10 }}>
+                <HealthConsentCheckbox checked={healthConsent} onChange={updateHealthConsent} />
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 10, opacity: healthConsent ? 1 : 0.5 }}>
                   <div style={{ flex: "1 1 130px" }}>
-                    <Field label="Keskisyke"><input type="text" value={wodAvgHr} onChange={(e) => setWodAvgHr(e.target.value)} style={inputStyle} /></Field>
+                    <Field label="Keskisyke"><input type="text" disabled={!healthConsent} value={wodAvgHr} onChange={(e) => setWodAvgHr(e.target.value)} style={inputStyle} /></Field>
                   </div>
                   <div style={{ flex: "1 1 130px" }}>
-                    <Field label="Palautuminen"><input type="text" value={wodRecovery} onChange={(e) => setWodRecovery(e.target.value)} style={inputStyle} /></Field>
+                    <Field label="Palautuminen"><input type="text" disabled={!healthConsent} value={wodRecovery} onChange={(e) => setWodRecovery(e.target.value)} style={inputStyle} /></Field>
                   </div>
                   <div style={{ flex: "1 1 100px" }}>
-                    <Field label="Uni (h)"><input type="text" value={wodSleepHrs} onChange={(e) => setWodSleepHrs(e.target.value)} style={inputStyle} /></Field>
+                    <Field label="Uni (h)"><input type="text" disabled={!healthConsent} value={wodSleepHrs} onChange={(e) => setWodSleepHrs(e.target.value)} style={inputStyle} /></Field>
                   </div>
                 </div>
               </WodCard>
@@ -961,18 +1014,19 @@ export default function Home() {
               <Field label="Muistiinpanot">
                 <input type="text" value={logNotes} onChange={(e) => setLogNotes(e.target.value)} style={inputStyle} />
               </Field>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+              <HealthConsentCheckbox checked={healthConsent} onChange={updateHealthConsent} />
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 12, opacity: healthConsent ? 1 : 0.5 }}>
                 <div style={{ flex: "1 1 130px" }}>
-                  <Field label="Keskisyke"><input type="text" value={logAvgHr} onChange={(e) => setLogAvgHr(e.target.value)} style={inputStyle} /></Field>
+                  <Field label="Keskisyke"><input type="text" disabled={!healthConsent} value={logAvgHr} onChange={(e) => setLogAvgHr(e.target.value)} style={inputStyle} /></Field>
                 </div>
                 <div style={{ flex: "1 1 130px" }}>
-                  <Field label="Palautuminen"><input type="text" value={logRecovery} onChange={(e) => setLogRecovery(e.target.value)} style={inputStyle} /></Field>
+                  <Field label="Palautuminen"><input type="text" disabled={!healthConsent} value={logRecovery} onChange={(e) => setLogRecovery(e.target.value)} style={inputStyle} /></Field>
                 </div>
                 <div style={{ flex: "1 1 100px" }}>
-                  <Field label="HRV (ms)"><input type="text" value={logHrv} onChange={(e) => setLogHrv(e.target.value)} style={inputStyle} /></Field>
+                  <Field label="HRV (ms)"><input type="text" disabled={!healthConsent} value={logHrv} onChange={(e) => setLogHrv(e.target.value)} style={inputStyle} /></Field>
                 </div>
                 <div style={{ flex: "1 1 100px" }}>
-                  <Field label="Uni (h)"><input type="text" value={logSleep} onChange={(e) => setLogSleep(e.target.value)} style={inputStyle} /></Field>
+                  <Field label="Uni (h)"><input type="text" disabled={!healthConsent} value={logSleep} onChange={(e) => setLogSleep(e.target.value)} style={inputStyle} /></Field>
                 </div>
               </div>
               <button onClick={addLogEntry} style={{ ...primaryBtn, marginTop: 10 }}>LISÄÄ</button>

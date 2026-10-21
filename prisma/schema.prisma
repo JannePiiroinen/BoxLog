@@ -17,6 +17,11 @@ model User {
   name      String?
   createdAt DateTime @default(now())
 
+  // Stripe-tilaus (kuukausitilaus). subscriptionStatus: "active" | "canceled" | "past_due" | null
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  subscriptionStatus   String?
+
   workouts Workout[]
   records  PersonalRecord[]
 }
