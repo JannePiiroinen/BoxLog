@@ -51,18 +51,18 @@ const sections = [
       },
     ],
     bullets: [
-      "Neon (Yhdysvallat) — tietokannan hosting, jossa treeni- ja käyttäjädata säilytetään salattuna",
+      "Neon (EU, Frankfurt) — tietokannan hosting, jossa treeni- ja käyttäjädata säilytetään salattuna. Myös sovelluksen palvelinfunktiot (Vercel) ajetaan Frankfurtissa.",
       "Anthropic (Yhdysvallat) — käsittelee syöttämääsi treenidataa tuottaakseen tekoälypohjaisia treeniehdotuksia ja raportteja. Dataa ei käytetä Anthropicin mallien kouluttamiseen.",
     ],
     paragraphsAfter: [
       {
         text:
-          "Koska molemmat sijaitsevat EU/ETA-alueen ulkopuolella, tiedonsiirto perustuu EU:n vakiosopimuslausekkeisiin (Standard Contractual Clauses, 2021) — molemmat palveluntarjoajat tarjoavat näihin perustuvan tietojenkäsittelysopimuksen (DPA).",
+          "Tietokanta ja sen sisältämä data pysyvät EU/ETA-alueella (Neon, Frankfurt). Ainoa EU:n ulkopuolelle siirtyvä tietosisältö on syöttämäsi treenidata, joka lähetetään Anthropicille (Yhdysvallat) tekoälypohjaisten treeniehdotusten ja raporttien tuottamista varten — tämä tiedonsiirto perustuu EU:n vakiosopimuslausekkeisiin (Standard Contractual Clauses, 2021).",
       },
       {
         todo: true,
         text:
-          "Tarkista oman tilisi/sopimustasosi kohdalta suoraan Neonin ja Anthropicin ajantasaiset DPA-dokumentit ennen julkaisua tuotantokäyttöön, erityisesti jos käyttäjämäärä kasvaa tai käsittelet maksavia asiakkaita.",
+          "Tarkista oman tilisi/sopimustasosi kohdalta suoraan Anthropicin ajantasainen DPA-dokumentti ennen julkaisua tuotantokäyttöön, erityisesti jos käyttäjämäärä kasvaa tai käsittelet maksavia asiakkaita.",
       },
     ],
   },
@@ -141,7 +141,7 @@ export default function TietosuojaPage() {
             TIETOSUOJA<span style={{ color: "var(--rust)" }}>SELOSTE</span>
           </div>
           <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: "var(--chalk-dim)", marginTop: 4 }}>
-            Päivitetty: 25.8.2026
+            Päivitetty: 22.10.2026
           </div>
         </div>
 
