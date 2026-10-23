@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/currentUser";
 import { subscriptionRequired } from "@/lib/subscription";
+import { checkAndRecordUsage, releaseUsage } from "@/lib/usageLimit";
+
+const ALLOWED_MEDIA_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const MAX_IMAGE_BASE64_LENGTH = 6 * 1024 * 1024;
 
 export async function POST(request) {
+  let usageEventId = null;
   try {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: "Ei kirjauduttu" }, { status: 401 });
@@ -13,6 +18,16 @@ export async function POST(request) {
     if (!imageBase64 || !mediaType) {
       return NextResponse.json({ error: "Kuva puuttuu" }, { status: 400 });
     }
+    if (typeof imageBase64 !== "string" || !ALLOWED_MEDIA_TYPES.includes(mediaType)) {
+      return NextResponse.json({ error: "Kuvan tulee olla JPEG, PNG tai WebP" }, { status: 400 });
+    }
+    if (imageBase64.length > MAX_IMAGE_BASE64_LENGTH) {
+      return NextResponse.json({ error: "Kuva on liian suuri" }, { status: 413 });
+    }
+
+    const usage = await checkAndRecordUsage(user.id, "photo");
+    if (!usage.ok) return NextResponse.json({ error: usage.message }, { status: usage.status });
+    usageEventId = usage.eventId;
 
     const prompt = `Olet CrossFit-valmentaja, joka lukee tämän päivän treenin kuvasta salin liitutaulusta tai käsinkirjoitetusta lapusta.
 
@@ -56,6 +71,7 @@ Vastaa VAIN JSON-muodossa, ei muuta tekstiä, ei markdown-koodilohkoja:
     });
 
     if (!res.ok) {
+      await releaseUsage(usageEventId);
       const errText = await res.text();
       return NextResponse.json({ error: "Anthropic API -virhe", detail: errText }, { status: 502 });
     }
@@ -71,6 +87,7 @@ Vastaa VAIN JSON-muodossa, ei muuta tekstiä, ei markdown-koodilohkoja:
     try {
       wod = JSON.parse(text);
     } catch (parseErr) {
+      await releaseUsage(usageEventId);
       return NextResponse.json(
         { error: "AI palautti virheellistä JSONia", detail: text },
         { status: 502 }
@@ -78,6 +95,7 @@ Vastaa VAIN JSON-muodossa, ei muuta tekstiä, ei markdown-koodilohkoja:
     }
     return NextResponse.json({ wod });
   } catch (err) {
+    await releaseUsage(usageEventId);
     return NextResponse.json({ error: "Kuvan tulkinta epäonnistui", detail: String(err) }, { status: 500 });
   }
 }

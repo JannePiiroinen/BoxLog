@@ -2,14 +2,20 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/currentUser";
 import { subscriptionRequired } from "@/lib/subscription";
+import { checkAndRecordUsage, releaseUsage } from "@/lib/usageLimit";
 
 export async function POST(request) {
+  let usageEventId = null;
   try {
     const { focus, bodyPart, duration, level, equipment } = await request.json();
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: "Ei kirjauduttu" }, { status: 401 });
     const gate = subscriptionRequired(user);
     if (gate) return gate;
+
+    const usage = await checkAndRecordUsage(user.id, "wod");
+    if (!usage.ok) return NextResponse.json({ error: usage.message }, { status: usage.status });
+    usageEventId = usage.eventId;
 
     const recentWorkouts = await prisma.workout.findMany({
       where: { userId: user.id },
@@ -67,12 +73,13 @@ JSON-rakenne:
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
-        max_tokens: 1000,
+        max_tokens: 1200,
         messages: [{ role: "user", content: prompt }],
       }),
     });
 
     if (!res.ok) {
+      await releaseUsage(usageEventId);
       const errText = await res.text();
       return NextResponse.json({ error: "Anthropic API -virhe", detail: errText }, { status: 502 });
     }
@@ -88,6 +95,7 @@ JSON-rakenne:
     try {
       wod = JSON.parse(text);
     } catch (parseErr) {
+      await releaseUsage(usageEventId);
       return NextResponse.json(
         { error: "AI palautti virheellistä JSONia", detail: text },
         { status: 502 }
@@ -95,6 +103,7 @@ JSON-rakenne:
     }
     return NextResponse.json({ wod });
   } catch (err) {
+    await releaseUsage(usageEventId);
     return NextResponse.json({ error: "WOD:n luonti epäonnistui", detail: String(err) }, { status: 500 });
   }
 }

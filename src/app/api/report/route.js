@@ -2,14 +2,23 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/currentUser";
 import { subscriptionRequired } from "@/lib/subscription";
+import { checkAndRecordUsage, releaseUsage } from "@/lib/usageLimit";
+
+const MAX_WORKOUTS_PER_PERIOD = 60;
 
 export async function POST(request) {
+  let usageEventId = null;
   try {
-    const { rangeMonths = 2 } = await request.json();
+    const body = await request.json();
+    const rangeMonths = Math.min(Math.max(parseInt(body.rangeMonths, 10) || 2, 1), 12);
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: "Ei kirjauduttu" }, { status: 401 });
     const gate = subscriptionRequired(user);
     if (gate) return gate;
+
+    const usage = await checkAndRecordUsage(user.id, "report");
+    if (!usage.ok) return NextResponse.json({ error: usage.message }, { status: usage.status });
+    usageEventId = usage.eventId;
 
     const now = new Date();
     const cutoff = new Date(now);
@@ -17,11 +26,21 @@ export async function POST(request) {
     const prevCutoff = new Date(cutoff);
     prevCutoff.setMonth(prevCutoff.getMonth() - rangeMonths);
 
-    const [current, previous, records] = await Promise.all([
-      prisma.workout.findMany({ where: { userId: user.id, date: { gte: cutoff, lt: now } }, orderBy: { date: "asc" } }),
-      prisma.workout.findMany({ where: { userId: user.id, date: { gte: prevCutoff, lt: cutoff } }, orderBy: { date: "asc" } }),
+    // Promptiin otetaan enintään MAX_WORKOUTS_PER_PERIOD viimeisintä treeniä per jakso, ettei se kasva rajatta.
+    // Kokonaismäärät haetaan erikseen, jotta raportin kappalemäärät pitävät paikkansa.
+    const currentWhere = { userId: user.id, date: { gte: cutoff, lt: now } };
+    const previousWhere = { userId: user.id, date: { gte: prevCutoff, lt: cutoff } };
+    const latestFirst = { orderBy: { date: "desc" }, take: MAX_WORKOUTS_PER_PERIOD };
+    const [currentLatest, previousLatest, currentCount, previousCount, records] = await Promise.all([
+      prisma.workout.findMany({ where: currentWhere, ...latestFirst }),
+      prisma.workout.findMany({ where: previousWhere, ...latestFirst }),
+      prisma.workout.count({ where: currentWhere }),
+      prisma.workout.count({ where: previousWhere }),
       prisma.personalRecord.findMany({ where: { userId: user.id }, orderBy: { date: "asc" } }),
     ]);
+    const current = currentLatest.reverse();
+    const previous = previousLatest.reverse();
+    const countLabel = (total, shown) => (total > shown ? `${total} kpl, alla viimeisimmät ${shown}` : `${total} kpl`);
 
     const summarize = (list) =>
       list
@@ -51,10 +70,10 @@ export async function POST(request) {
 
     const prompt = `Olet CrossFit-valmentaja, joka analysoi urheilijan kehitystä. Tarkastelujakso on viimeiset ${rangeMonths} kuukautta verrattuna sitä edeltäneisiin ${rangeMonths} kuukauteen.
 
-TARKASTELUJAKSON TREENIT (${current.length} kpl):
+TARKASTELUJAKSON TREENIT (${countLabel(currentCount, current.length)}):
 ${summarize(current) || "ei merkintöjä"}
 
-EDELLINEN JAKSO (${previous.length} kpl):
+EDELLINEN JAKSO (${countLabel(previousCount, previous.length)}):
 ${summarize(previous) || "ei merkintöjä"}
 
 ENNÄTYSHISTORIA:
@@ -82,12 +101,13 @@ Vastaa VAIN JSON-muodossa, ei muuta tekstiä, ei markdown-koodilohkoja:
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
-        max_tokens: 1000,
+        max_tokens: 1500,
         messages: [{ role: "user", content: prompt }],
       }),
     });
 
     if (!res.ok) {
+      await releaseUsage(usageEventId);
       const errText = await res.text();
       return NextResponse.json({ error: "Anthropic API -virhe", detail: errText }, { status: 502 });
     }
@@ -103,13 +123,15 @@ Vastaa VAIN JSON-muodossa, ei muuta tekstiä, ei markdown-koodilohkoja:
     try {
       report = JSON.parse(text);
     } catch (parseErr) {
+      await releaseUsage(usageEventId);
       return NextResponse.json(
         { error: "AI palautti virheellistä JSONia", detail: text },
         { status: 502 }
       );
     }
-    return NextResponse.json({ report: { ...report, currentCount: current.length, previousCount: previous.length } });
+    return NextResponse.json({ report: { ...report, currentCount, previousCount } });
   } catch (err) {
+    await releaseUsage(usageEventId);
     return NextResponse.json({ error: "Raportin luonti epäonnistui", detail: String(err) }, { status: 500 });
   }
 }

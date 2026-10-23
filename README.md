@@ -50,10 +50,50 @@ src/app/api/wod/          - AI-WOD-generaattori (kutsuu Anthropic APIa palvelime
 src/app/api/workouts/     - treenilogi (GET/POST/DELETE)
 src/app/api/prs/          - ennätykset
 src/app/api/report/       - AI-kehitysraportti
+src/app/api/usage/        - kuluvan kuukauden AI-käyttö ja rajat (GET)
+src/lib/usageLimit.js     - AI-kutsujen käyttörajat
 prisma/schema.prisma      - tietokantamalli
 ```
 
-## 4. Puuttuu vielä (seuraavat vaiheet)
+## 4. AI-käyttörajat
+
+Jokainen Anthropic-kutsu (WOD, kuvan tulkinta, raportti) kirjataan `UsageEvent`-tauluun, ja kutsu estetään
+HTTP 429:llä, jos jokin raja ylittyy. Epäonnistunut AI-kutsu ei kuluta kiintiötä.
+
+| Muuttuja | Oletus | Merkitys |
+|---|---|---|
+| `LIMIT_WOD_MONTH` | 30 | WOD-generointeja / käyttäjä / kalenterikuukausi |
+| `LIMIT_PHOTO_MONTH` | 20 | Taulukuvan tulkintoja / käyttäjä / kalenterikuukausi |
+| `LIMIT_REPORT_MONTH` | 5 | Kehitysraportteja / käyttäjä / kalenterikuukausi |
+| `LIMIT_GLOBAL_DAY` | 300 | Kaikki AI-kutsut yhteensä kaikilta käyttäjiltä / 24 h (hätäjarru) |
+
+Lisäksi kiinteästi: sama käyttäjä + sama toiminto enintään kerran / 5 s, ja kuva enintään ~6 MB
+(JPEG/PNG/WebP). Kuukausi vaihtuu Suomen aikaa. Muuttujia ei tarvitse asettaa, jos oletukset kelpaavat.
+
+### Rajojen testaus
+
+Nopea testi suoraan tietokantaa vasten (ei Anthropic-kutsuja, ei maksa mitään; luo ja poistaa testikäyttäjän):
+```bash
+npm run test:usage
+```
+
+Päästä päähän -testi oikeaa API:a vasten (kaksi ensimmäistä kutsua kuluttavat Anthropic-krediittejä,
+ja testikäyttäjällä pitää olla aktiivinen tilaus):
+```bash
+LIMIT_WOD_MONTH=2 npm run dev
+# toisessa terminaalissa:
+for i in 1 2 3; do
+  curl -s -X POST localhost:3000/api/wod -H 'Content-Type: application/json' \
+    -d '{"focus":"Sekoitus","duration":20,"level":"Scaled","equipment":"Ei välineitä"}' \
+    -o /dev/null -w "kutsu $i: HTTP %{http_code}\n"
+  sleep 6
+done
+curl -s localhost:3000/api/usage
+```
+Kolmannen kutsun pitäisi palauttaa 429. Huom: jos kuluvalla kuulla on jo aiempia WOD-kutsuja, raja tulee
+vastaan aiemmin. Testirivit voi poistaa Prisma Studiosta (`UsageEvent`-taulu).
+
+## 5. Puuttuu vielä (seuraavat vaiheet)
 
 - **Kirjautuminen** — kaikki data menee yhdelle kovakoodatulle testikäyttäjälle
   (`src/lib/currentUser.js`). NextAuth-toteutus poistettiin demo/myyntivaiheen ajaksi

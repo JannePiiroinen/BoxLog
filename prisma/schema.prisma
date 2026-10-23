@@ -24,6 +24,7 @@ model User {
 
   workouts Workout[]
   records  PersonalRecord[]
+  usage    UsageEvent[]
 }
 
 model Workout {
@@ -62,4 +63,16 @@ model PersonalRecord {
   date      DateTime @default(now())
 
   @@index([userId, key])
+}
+
+// Yksi rivi per maksullinen AI-kutsu - käytetään kuukausirajoihin, jäähdytykseen ja globaaliin päiväkattoon.
+model UsageEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  kind      String   // "wod" | "photo" | "report"
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, kind, createdAt])
+  @@index([createdAt])
 }

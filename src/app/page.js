@@ -7,6 +7,7 @@ const wodFormats = [
   { term: "For Time", desc: "Suorita liikkeet/kierrokset mahdollisimman nopeasti, mitataan aika. Klassinen \"kuka on nopein\" -formaatti (esim. Fran)." },
   { term: "AMRAP (As Many Rounds/Reps As Possible)", desc: "Tee mahdollisimman monta kierrosta (tai toistoa) annetussa ajassa, esim. \"AMRAP 12 min\". Mittarina on kierrosmäärä, ei aika." },
   { term: "EMOM (Every Minute On the Minute)", desc: "Uusi liikesarja alkaa joka minuutin alussa. Jos ehdit ennen minuutin loppua, lepäät jäljelle jäävän ajan. Testaa sekä suoritustehoa että palautumista." },
+  { term: "E2MOM (Every 2 Minutes On the Minute)", desc: "Kuten EMOM, mutta uusi sarja alkaa kahden minuutin välein, esim. \"E2MOM 10 min: 3 power clean\" = 5 sarjaa. Pidempi aikaikkuna sallii raskaammat painot tai isommat sarjat. Samalla logiikalla E3MOM, E4MOM jne. Kirjoitetaan myös muodossa \"Every 2:00\"." },
   { term: "RFT (Rounds For Time)", desc: "Sama kuin For Time, mutta korostaa nimenomaan kierrosten määrää, esim. \"5 RFT: 10 pull-up, 15 push-up\"." },
   { term: "Tabata", desc: "20 sekuntia täysillä, 10 sekuntia lepoa, toistetaan 8 kierrosta (yhteensä 4 min) per liike. Alunperin tutkimusprotokolla, otettu CrossFitin käyttöön." },
   { term: "Chipper", desc: "Pitkä lista erilaisia liikkeitä, jotka suoritetaan kerran läpi järjestyksessä (ei kierroksia), usein isoilla toistomäärillä. \"Chippaat\" listaa läpi." },
@@ -15,6 +16,30 @@ const wodFormats = [
   { term: "Interval / Rest-based", desc: "Esim. \"3 rounds, rest 2 min between\" — kierrokset erotettu kiinteillä lepotauoilla, ei jatkuva suoritus." },
   { term: "Strength/Skill work", desc: "Ei varsinainen \"metcon\"-formaatti, mutta osa WOD-rakennetta. Esim. \"5x5 back squat\" — sarjat x toistot kiinteällä painolla, keskittyy voimaan/tekniikkaan ennen metconia." },
   { term: "Partner WOD", desc: "Kaksi urheilijaa jakavat työn (esim. vuorotellen, tai toinen tekee liikettä A kun toinen liikettä B)." },
+];
+
+const movementAbbreviations = [
+  { term: "DU / SU", desc: "Double-under / single-under. DU:ssa hyppynaru kiertää kahdesti jalkojen ali yhden hypyn aikana, SU on tavallinen naruhyppy." },
+  { term: "KBS", desc: "Kettlebell swing. Russian-versiossa kuula nousee silmien korkeudelle, American-versiossa pään yli." },
+  { term: "T2B / TTB", desc: "Toes-to-bar: roikunnasta varpaat tankoon." },
+  { term: "K2E", desc: "Knees-to-elbows: roikunnasta polvet kyynärpäihin, T2B:n kevyempi versio." },
+  { term: "C2B", desc: "Chest-to-bar pull-up: leuanveto, jossa rinta osuu tankoon." },
+  { term: "HSPU / HSW", desc: "Handstand push-up (käsinseisontapunnerrus, yleensä seinää vasten) / handstand walk (käsilläkävely)." },
+  { term: "MU / BMU / RMU", desc: "Muscle-up: veto ja punnerrus yhdessä liikkeessä tangon (BMU) tai renkaiden (RMU) päälle." },
+  { term: "WB", desc: "Wall ball: kuntopallo heitetään kyykystä seinässä olevaan maaliin." },
+  { term: "BJ / BJO / BBJO", desc: "Box jump / box jump over (laatikon yli) / burpee box jump over (burpee + hyppy laatikon yli)." },
+  { term: "OHS", desc: "Overhead squat: kyykky tanko suorin käsin pään yläpuolella." },
+  { term: "FS / BS", desc: "Front squat (tanko edessä hartioilla) / back squat (tanko selässä)." },
+  { term: "DL / SDHP", desc: "Deadlift (maastaveto) / sumo deadlift high pull (leveä maastaveto + veto leukaan)." },
+  { term: "C&J / PC / SC", desc: "Clean and jerk / power clean (rinnalleveto ilman täyttä kyykkyä) / squat clean (täyteen kyykkyyn)." },
+  { term: "SN / PSN", desc: "Snatch (tempaus) / power snatch (tempaus ilman täyttä kyykkyä)." },
+  { term: "S2OH / G2OH", desc: "Shoulder-to-overhead (hartioilta pään yli, tekniikka vapaa: press, push press tai jerk) / ground-to-overhead (lattialta pään yli)." },
+  { term: "GHD", desc: "Glute-ham developer -laite, jolla tehdään esim. GHD sit-up ja selän ojennukset." },
+  { term: "KB / DB", desc: "Kettlebell (kahvakuula) / dumbbell (käsipaino)." },
+  { term: "Cal", desc: "Kalorit soutulaitteella, assault bikella tai SkiErgillä, esim. \"15 cal row\"." },
+  { term: "43/30 kg", desc: "Kaksi painoa kauttaviivalla: ensimmäinen on miesten, jälkimmäinen naisten ohjepaino." },
+  { term: "RX / Scaled", desc: "RX = treeni ohjelmoiduilla painoilla ja liikkeillä, Scaled = kevennetty versio." },
+  { term: "1RM / PR", desc: "1RM = yhden toiston maksimi, PR = henkilökohtainen ennätys." },
 ];
 
 function resizeImageFile(file, maxDim = 1600, quality = 0.82) {
@@ -42,6 +67,51 @@ function resizeImageFile(file, maxDim = 1600, quality = 0.82) {
     };
     img.src = url;
   });
+}
+
+// 429 (käyttöraja) ja 413 (liian suuri kuva) -virheiden teksti näytetään käyttäjälle sellaisenaan.
+// 413 voi tulla myös Vercelistä ilman JSON-runkoa, joten varateksti tarvitaan.
+function userFacingError(res, data) {
+  if (res.status === 429) return data?.error || "Käyttöraja täynnä. Yritä myöhemmin uudelleen.";
+  if (res.status === 413) return data?.error || "Kuva on liian suuri";
+  return null;
+}
+
+function GlossaryPanel({ title, teaser, items }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Panel style={{ padding: 20, marginTop: 20 }}>
+      <div
+        onClick={() => setOpen((v) => !v)}
+        style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}
+      >
+        <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 22 }}>{title}</div>
+        <div style={{ color: "var(--chalk-dim)", fontSize: 20, lineHeight: 1 }}>{open ? "−" : "+"}</div>
+      </div>
+      {!open && <div style={{ color: "var(--chalk-dim)", fontSize: 13, marginTop: 6 }}>{teaser}</div>}
+      {open && (
+        <div style={{ marginTop: 14 }}>
+          {items.map((f) => (
+            <div key={f.term} style={{ marginBottom: 14 }}>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: "var(--rust)", marginBottom: 2 }}>
+                {f.term}
+              </div>
+              <div style={{ fontSize: 13, color: "var(--chalk-dim)", lineHeight: 1.5 }}>{f.desc}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+function UsageNote({ usage }) {
+  if (!usage) return null;
+  return (
+    <div style={{ fontSize: 12, color: "var(--chalk-dim)", marginTop: 8 }}>
+      Käytetty tässä kuussa: {usage.used} / {usage.limit}
+    </div>
+  );
 }
 
 function parseMinutesToSeconds(text) {
@@ -483,7 +553,6 @@ export default function Home() {
   const [wodRecovery, setWodRecovery] = useState("");
   const [wodSleepHrs, setWodSleepHrs] = useState("");
 
-  const [showGlossary, setShowGlossary] = useState(false);
 
   const [healthConsent, setHealthConsent] = useState(false);
 
@@ -510,6 +579,10 @@ export default function Home() {
   const [reportRange, setReportRange] = useState(2);
   const [report, setReport] = useState(null);
   const [reportLoading, setReportLoading] = useState(false);
+  const [reportError, setReportError] = useState(null);
+  const [usage, setUsage] = useState(null);
+  // Estää tuplaklikkauksen: disabled-tila päivittyy vasta seuraavassa renderöinnissä.
+  const aiInFlight = useRef({});
   const [selectedWorkout, setSelectedWorkout] = useState(null);
   const [timerWod, setTimerWod] = useState(null);
 
@@ -535,11 +608,25 @@ export default function Home() {
     }
   }, []);
 
+  const loadUsage = useCallback(async () => {
+    try {
+      const res = await fetch("/api/usage");
+      if (!res.ok) return;
+      const data = await res.json();
+      setUsage(data.usage || null);
+    } catch (e) {
+      // ei kriittistä - käyttölaskuri jää vain näyttämättä
+    }
+  }, []);
+
   useEffect(() => {
     loadAll();
-  }, [loadAll]);
+    loadUsage();
+  }, [loadAll, loadUsage]);
 
   async function generateWod() {
+    if (aiInFlight.current.wod) return;
+    aiInFlight.current.wod = true;
     setGenerating(true);
     setGenError(null);
     setWod(null);
@@ -550,13 +637,17 @@ export default function Home() {
         body: JSON.stringify({ focus, bodyPart, duration, level, equipment }),
       });
       if (res.status === 402) return (window.location.href = "/tilaus");
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      const limitError = userFacingError(res, data);
+      if (limitError) return setGenError(limitError);
       if (!res.ok) throw new Error(data.error);
       setWod(data.wod);
     } catch (e) {
       setGenError("WOD:n luonti epäonnistui. Yritä uudelleen.");
     } finally {
+      aiInFlight.current.wod = false;
       setGenerating(false);
+      loadUsage();
     }
   }
 
@@ -632,7 +723,8 @@ export default function Home() {
   }
 
   async function interpretPhoto() {
-    if (!photoImage) return;
+    if (!photoImage || aiInFlight.current.photo) return;
+    aiInFlight.current.photo = true;
     setPhotoInterpreting(true);
     setPhotoError(null);
     setPhotoWod(null);
@@ -643,13 +735,17 @@ export default function Home() {
         body: JSON.stringify({ imageBase64: photoImage.base64, mediaType: photoImage.mediaType }),
       });
       if (res.status === 402) return (window.location.href = "/tilaus");
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      const limitError = userFacingError(res, data);
+      if (limitError) return setPhotoError(limitError);
       if (!res.ok) throw new Error(data.error);
       setPhotoWod(data.wod);
     } catch (e) {
       setPhotoError("Taulun tulkinta epäonnistui. Tarkista valaistus/terävyys ja yritä uudelleen.");
     } finally {
+      aiInFlight.current.photo = false;
       setPhotoInterpreting(false);
+      loadUsage();
     }
   }
 
@@ -749,7 +845,10 @@ export default function Home() {
   }
 
   async function generateReport() {
+    if (aiInFlight.current.report) return;
+    aiInFlight.current.report = true;
     setReportLoading(true);
+    setReportError(null);
     setReport(null);
     try {
       const res = await fetch("/api/report", {
@@ -758,12 +857,17 @@ export default function Home() {
         body: JSON.stringify({ rangeMonths: reportRange }),
       });
       if (res.status === 402) return (window.location.href = "/tilaus");
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      const limitError = userFacingError(res, data);
+      if (limitError) return setReportError(limitError);
+      if (!res.ok) throw new Error(data.error);
       setReport(data.report);
     } catch (e) {
-      // näytetään yksinkertainen virhe
+      setReportError("Raportin luonti epäonnistui. Yritä uudelleen.");
     } finally {
+      aiInFlight.current.report = false;
       setReportLoading(false);
+      loadUsage();
     }
   }
 
@@ -857,6 +961,7 @@ export default function Home() {
                 <button onClick={generateWod} disabled={generating} style={primaryBtn}>
                   {generating ? "LUODAAN…" : "LUO TÄMÄN PÄIVÄN WOD"}
                 </button>
+                <UsageNote usage={usage?.wod} />
                 {genError && <div style={{ color: "var(--red)", fontSize: 13, marginTop: 10 }}>{genError}</div>}
               </Panel>
             )}
@@ -920,6 +1025,7 @@ export default function Home() {
                 <button onClick={interpretPhoto} disabled={!photoImage || photoInterpreting} style={primaryBtn}>
                   {photoInterpreting ? "TULKITAAN…" : "TULKITSE TAULU"}
                 </button>
+                <UsageNote usage={usage?.photo} />
                 {photoError && <div style={{ color: "var(--red)", fontSize: 13, marginTop: 10 }}>{photoError}</div>}
               </Panel>
             )}
@@ -975,32 +1081,16 @@ export default function Home() {
               </WodCard>
             )}
 
-            <Panel style={{ padding: 20, marginTop: 20 }}>
-              <div
-                onClick={() => setShowGlossary((v) => !v)}
-                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}
-              >
-                <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 22 }}>CROSSFIT-SANASTO</div>
-                <div style={{ color: "var(--chalk-dim)", fontSize: 20, lineHeight: 1 }}>{showGlossary ? "−" : "+"}</div>
-              </div>
-              {!showGlossary && (
-                <div style={{ color: "var(--chalk-dim)", fontSize: 13, marginTop: 6 }}>
-                  Uusi CrossFitissä? Tarkista mitä For Time, AMRAP, EMOM ja muut lyhenteet tarkoittavat.
-                </div>
-              )}
-              {showGlossary && (
-                <div style={{ marginTop: 14 }}>
-                  {wodFormats.map((f) => (
-                    <div key={f.term} style={{ marginBottom: 14 }}>
-                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: "var(--rust)", marginBottom: 2 }}>
-                        {f.term}
-                      </div>
-                      <div style={{ fontSize: 13, color: "var(--chalk-dim)", lineHeight: 1.5 }}>{f.desc}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </Panel>
+<GlossaryPanel
+              title="CROSSFIT-SANASTO"
+              teaser="Uusi CrossFitissä? Tarkista mitä For Time, AMRAP, EMOM ja muut lyhenteet tarkoittavat."
+              items={wodFormats}
+            />
+            <GlossaryPanel
+              title="LIIKKEIDEN LYHENTEET"
+              teaser="Mitä DU, KBS, T2B ja muut taululla näkyvät lyhenteet tarkoittavat?"
+              items={movementAbbreviations}
+            />
           </div>
         )}
 
@@ -1184,6 +1274,8 @@ export default function Home() {
               <button onClick={generateReport} disabled={reportLoading} style={primaryBtn}>
                 {reportLoading ? "ANALYSOIDAAN…" : "LUO RAPORTTI"}
               </button>
+              <UsageNote usage={usage?.report} />
+              {reportError && <div style={{ color: "var(--red)", fontSize: 13, marginTop: 10 }}>{reportError}</div>}
             </Panel>
             {report && (
               <Panel style={{ padding: 22, background: "var(--bg3)" }}>
